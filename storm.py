@@ -2,7 +2,22 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 
+import phoenix as px
+from phoenix.trace.openai import OpenAIInstrumentor
+from openinference.semconv.resource import ResourceAttributes
+from opentelemetry import trace as trace_api
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk import trace as trace_sdk
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+
+import demo_util
+from pages_util import MyArticles, CreateNewArticle
+from streamlit_float import *
+from streamlit_option_menu import option_menu
+
 load_dotenv()
+
 # Set page config first
 st.set_page_config(layout="wide")
 
@@ -41,11 +56,6 @@ st.markdown(hide_progress_bar, unsafe_allow_html=True)
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 wiki_root_dir = os.path.dirname(os.path.dirname(script_dir))
-
-import demo_util
-from pages_util import MyArticles, CreateNewArticle
-from streamlit_float import *
-from streamlit_option_menu import option_menu
 
 
 def main():
@@ -103,4 +113,19 @@ def main():
 
 
 if __name__ == "__main__":
+    resource = Resource(attributes={ResourceAttributes.PROJECT_NAME: "storm-wiki"})
+    tracer_provider = trace_sdk.TracerProvider(resource=resource)
+
+    phoenix_collector_endpoint = os.getenv(
+        "PHOENIX_COLLECTOR_ENDPOINT", "localhost:6006"
+    )
+    span_exporter = OTLPSpanExporter(
+        endpoint=f"http://{phoenix_collector_endpoint}/v1/traces"
+    )
+    span_processor = SimpleSpanProcessor(span_exporter=span_exporter)
+    tracer_provider.add_span_processor(span_processor=span_processor)
+    trace_api.set_tracer_provider(tracer_provider=tracer_provider)
+
+    OpenAIInstrumentor().instrument()
+
     main()

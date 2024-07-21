@@ -1,3 +1,8 @@
+# storm
+knowledge_storm==0.2.3
+openai==1.36.1 # openai version for knowledge_storm 0.2.3
+
+# streamlit
 streamlit==1.36.0
 streamlit-card
 markdown
@@ -8,4 +13,7 @@ deprecation==2.1.0
 st-pages==0.4.5
 streamlit-float
 streamlit-option-menu
+
+# stracing
 python-dotenv
+arize-phoenix==4.12.0

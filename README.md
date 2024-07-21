@@ -12,6 +12,7 @@
 - save result files as '*.md'
 - add date to to top of the result file
 - added STORM_TIMEZONE
+- added arize-phoenix to trace. added PHOENIX_COLLECTOR_ENDPOINT
 
 ![storm](./assets/storm.png)
 

@@ -113,6 +113,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # ----------------------
+    # Phoenix setup
+    # ----------------------
     resource = Resource(attributes={ResourceAttributes.PROJECT_NAME: "storm-wiki"})
     tracer_provider = trace_sdk.TracerProvider(resource=resource)
 
@@ -128,4 +131,7 @@ if __name__ == "__main__":
 
     OpenAIInstrumentor().instrument()
 
+    # ----
+    # main
+    # ----
     main()

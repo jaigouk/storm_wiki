@@ -1,7 +1,7 @@
 
 # STORM wiki
 
-[STROM](https://github.com/stanford-oval/storm) frontend modified.
+[STORM](https://github.com/stanford-oval/storm) frontend modified.
 
 ## Features & Changes
 

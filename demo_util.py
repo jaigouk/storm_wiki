@@ -18,8 +18,7 @@ from knowledge_storm import (
     STORMWikiRunner,
     STORMWikiLMConfigs,
 )
-from knowledge_storm.lm import OpenAIModel
-from knowledge_storm.rm import YouRM
+from knowledge_storm.lm import OpenAIModel, OllamaClient
 from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
 from stoc import stoc
 
@@ -834,27 +833,48 @@ def convert_txt_to_md(directory):
                 print(f"Converted {txt_path} to {md_path}")
 
 
-def set_storm_runner():
-    current_working_dir = get_output_dir()
-    if not os.path.exists(current_working_dir):
-        os.makedirs(current_working_dir)
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
-    # configure STORM runner
+
+def run_storm_with_fallback(topic, current_working_dir, callback_handler=None):
+    def run_with_timeout(func, timeout=300):  # 5 minutes timeout
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(func)
+            try:
+                return future.result(timeout=timeout)
+            except TimeoutError:
+                st.error(f"Operation timed out after {timeout} seconds")
+                return None
+
+    def log_progress(message):
+        st.info(message)
+        if callback_handler:
+            # Use an existing method of StreamlitCallbackHandler
+            callback_handler.on_information_gathering_start(message=message)
+
     llm_configs = STORMWikiLMConfigs()
-    llm_configs.init_openai_model(
-        openai_api_key=st.secrets["OPENAI_API_KEY"],
-        openai_type="openai",
-    )
-    llm_configs.set_question_asker_lm(
-        OpenAIModel(
-            model="gpt-4o-mini-2024-07-18",
-            api_key=st.secrets["OPENAI_API_KEY"],
-            api_provider="openai",
-            max_tokens=1000,
-            temperature=0.3,
-            top_p=0.9,
-        )
-    )
+    ollama_kwargs = {
+        "model": "jaigouk/hermes-2-theta-llama-3:latest",
+        "url": "http://localhost",
+        "port": 11434,
+        "stop": ("\n\n---",),
+    }
+
+    log_progress("Initializing language models...")
+
+    conv_simulator_lm = OllamaClient(max_tokens=500, **ollama_kwargs)
+    question_asker_lm = OllamaClient(max_tokens=500, **ollama_kwargs)
+    outline_gen_lm = OllamaClient(max_tokens=400, **ollama_kwargs)
+    article_gen_lm = OllamaClient(max_tokens=700, **ollama_kwargs)
+    article_polish_lm = OllamaClient(max_tokens=4000, **ollama_kwargs)
+
+    llm_configs.set_conv_simulator_lm(conv_simulator_lm)
+    llm_configs.set_question_asker_lm(question_asker_lm)
+    llm_configs.set_outline_gen_lm(outline_gen_lm)
+    llm_configs.set_article_gen_lm(article_gen_lm)
+    llm_configs.set_article_polish_lm(article_polish_lm)
+
     engine_args = STORMWikiRunnerArguments(
         output_dir=current_working_dir,
         max_conv_turn=3,
@@ -863,13 +883,122 @@ def set_storm_runner():
         retrieve_top_k=5,
     )
 
+    log_progress("Setting up search engine...")
+    rm = DuckDuckGoAdapter(k=engine_args.search_top_k)
+    runner = STORMWikiRunner(engine_args, llm_configs, rm)
+
     try:
-        rm = DuckDuckGoAdapter(k=engine_args.search_top_k)
-        runner = STORMWikiRunner(engine_args, llm_configs, rm)
-        st.session_state["runner"] = runner
+        log_progress("Starting research phase...")
+
+        def run_research():
+            return runner.run(
+                topic=topic,
+                do_research=True,
+                do_generate_outline=False,
+                do_generate_article=False,
+                do_polish_article=False,
+            )
+
+        if run_with_timeout(run_research) is None:
+            raise Exception("Research phase timed out")
+
+        log_progress("Research phase completed. Generating outline...")
+
+        def run_outline():
+            return runner.run(
+                topic=topic,
+                do_research=False,
+                do_generate_outline=True,
+                do_generate_article=False,
+                do_polish_article=False,
+            )
+
+        if run_with_timeout(run_outline) is None:
+            raise Exception("Outline generation timed out")
+
+        log_progress("Outline generated. Writing article...")
+
+        def run_article():
+            return runner.run(
+                topic=topic,
+                do_research=False,
+                do_generate_outline=False,
+                do_generate_article=True,
+                do_polish_article=False,
+            )
+
+        if run_with_timeout(run_article) is None:
+            raise Exception("Article generation timed out")
+
+        log_progress("Article written. Polishing...")
+
+        def run_polish():
+            return runner.run(
+                topic=topic,
+                do_research=False,
+                do_generate_outline=False,
+                do_generate_article=False,
+                do_polish_article=True,
+            )
+
+        if run_with_timeout(run_polish) is None:
+            raise Exception("Article polishing timed out")
+
+        log_progress("Article polishing completed.")
+
     except Exception as e:
-        st.error(f"Error setting up STORM runner: {e}")
-        st.session_state["runner"] = None
+        st.error(f"Error during Ollama-based generation: {str(e)}")
+        st.warning("Falling back to GPT-4 Mini...")
+
+        # Fallback to GPT-4 Mini
+        gpt4_mini_model = OpenAIModel(
+            model="gpt-4o-mini-2024-07-18",
+            api_key=st.secrets["OPENAI_API_KEY"],
+            api_provider="openai",
+            max_tokens=1000,
+            temperature=0.3,
+            top_p=0.9,
+        )
+
+        llm_configs.set_conv_simulator_lm(gpt4_mini_model)
+        llm_configs.set_question_asker_lm(gpt4_mini_model)
+        llm_configs.set_outline_gen_lm(gpt4_mini_model)
+        llm_configs.set_article_gen_lm(gpt4_mini_model)
+        llm_configs.set_article_polish_lm(gpt4_mini_model)
+
+        # Re-initialize the runner with the updated configs
+        runner = STORMWikiRunner(engine_args, llm_configs, rm)
+
+        try:
+            log_progress("Starting GPT-4 Mini fallback process...")
+            run_with_timeout(
+                lambda: runner.run(
+                    topic=topic,
+                    do_research=True,
+                    do_generate_outline=True,
+                    do_generate_article=True,
+                    do_polish_article=True,
+                )
+            )
+            log_progress("GPT-4 Mini fallback process completed.")
+            runner.post_run()
+            return runner
+        except Exception as e:
+            st.error(f"Error during GPT-4 Mini fallback: {str(e)}")
+            return None
+
+    runner.post_run()
+    return runner
+
+
+# Update the set_storm_runner function
+def set_storm_runner():
+    current_working_dir = get_output_dir()
+    if not os.path.exists(current_working_dir):
+        os.makedirs(current_working_dir)
+
+    # Store the function itself in the session state
+    st.session_state["run_storm"] = run_storm_with_fallback
 
     # Convert existing txt files to md
     convert_txt_to_md(current_working_dir)

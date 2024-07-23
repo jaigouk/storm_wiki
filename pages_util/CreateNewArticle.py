@@ -117,36 +117,99 @@ def create_new_article_page():
         if not os.path.exists(current_working_dir):
             os.makedirs(current_working_dir)
 
-        if "runner" not in st.session_state:
+        if "run_storm" not in st.session_state:
             set_storm_runner()
         st.session_state["page3_current_working_dir"] = current_working_dir
         st.session_state["page3_write_article_state"] = "pre_writing"
 
     if st.session_state["page3_write_article_state"] == "pre_writing":
         status = st.status(
-            "I am brain**STORM**ing now to research the topic. (This may take 2-3 minutes.)"
+            "I am brain**STORM**ing now to research the topic. (This may take several minutes.)"
         )
-        st_callback_handler = StreamlitCallbackHandler(status)
+        progress_bar = st.progress(0)
+        progress_text = st.empty()
+
+        class ProgressCallback(StreamlitCallbackHandler):
+            def __init__(self, progress_bar, progress_text):
+                self.progress_bar = progress_bar
+                self.progress_text = progress_text
+                self.steps = ["research", "outline", "article", "polish"]
+                self.current_step = 0
+
+            def on_information_gathering_start(self, **kwargs):
+                self.progress_text.text(
+                    kwargs.get(
+                        "message",
+                        f"Step {self.current_step + 1}/{len(self.steps)}: {self.steps[self.current_step]}",
+                    )
+                )
+                self.progress_bar.progress((self.current_step + 1) / len(self.steps))
+                self.current_step = min(self.current_step + 1, len(self.steps) - 1)
+
+        callback = ProgressCallback(progress_bar, progress_text)
+
         with status:
-            # STORM main gen outline
-            st.session_state["runner"].run(
-                topic=st.session_state["page3_topic"],
-                do_research=True,
-                do_generate_outline=True,
-                do_generate_article=False,
-                do_polish_article=False,
-                callback_handler=st_callback_handler,
-            )
-            conversation_log_path = os.path.join(
+            # Run STORM with fallback
+            runner = st.session_state["run_storm"](
+                st.session_state["page3_topic"],
                 st.session_state["page3_current_working_dir"],
-                st.session_state["page3_topic_name_cleaned"],
-                "conversation_log.json",
+                callback_handler=callback,
             )
-            DemoUIHelper.display_persona_conversations(
-                DemoFileIOHelper.read_json_file(conversation_log_path)
+            if runner:
+                conversation_log_path = os.path.join(
+                    st.session_state["page3_current_working_dir"],
+                    st.session_state["page3_topic_name_cleaned"],
+                    "conversation_log.json",
+                )
+                if os.path.exists(conversation_log_path):
+                    DemoUIHelper.display_persona_conversations(
+                        DemoFileIOHelper.read_json_file(conversation_log_path)
+                    )
+                st.session_state["page3_write_article_state"] = "final_writing"
+                status.update(label="brain**STORM**ing complete!", state="complete")
+                progress_bar.progress(100)
+
+                # Store the runner in the session state
+                st.session_state["runner"] = runner
+            else:
+                st.error("Failed to generate the article.")
+                st.session_state["page3_write_article_state"] = "not started"
+                return  # Exit the function early if runner is None
+
+    if st.session_state["page3_write_article_state"] == "final_writing":
+        # Check if runner exists in the session state
+        if "runner" not in st.session_state or st.session_state["runner"] is None:
+            st.error("Article generation failed. Please try again.")
+            st.session_state["page3_write_article_state"] = "not started"
+            return
+
+        with st.status(
+            "Now I will connect the information I found for your reference. (This may take 4-5 minutes.)"
+        ) as status:
+            st.info(
+                "Now I will connect the information I found for your reference. (This may take 4-5 minutes.)"
             )
-            st.session_state["page3_write_article_state"] = "final_writing"
-            status.update(label="brain**STORM**ing complete!", state="complete")
+            try:
+                st.session_state["runner"].run(
+                    topic=st.session_state["page3_topic"],
+                    do_research=False,
+                    do_generate_outline=False,
+                    do_generate_article=True,
+                    do_polish_article=True,
+                    remove_duplicate=False,
+                )
+                # finish the session
+                st.session_state["runner"].post_run()
+
+                # Convert txt files to md after article generation
+                convert_txt_to_md(st.session_state["page3_current_working_dir"])
+
+                # update status bar
+                st.session_state["page3_write_article_state"] = "prepare_to_show_result"
+                status.update(label="information synthesis complete!", state="complete")
+            except Exception as e:
+                st.error(f"Error during final article generation: {str(e)}")
+                st.session_state["page3_write_article_state"] = "not started"
 
     if st.session_state["page3_write_article_state"] == "final_writing":
         # polish final article

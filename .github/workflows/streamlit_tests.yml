@@ -15,24 +15,35 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python 3.10
         uses: actions/setup-python@v3
         with:
           python-version: "3.10"
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libxml2-dev libxslt-dev
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install newspaper3k  # Add this line to install newspaper3k
+          pip install -r requirements.txt
+
       - name: Lint with flake8
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          # Optional: Additional flake8 configuration
+
       - name: Test with pytest
         run: |
           pytest

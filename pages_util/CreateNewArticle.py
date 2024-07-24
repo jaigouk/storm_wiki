@@ -1,17 +1,11 @@
 import os
-import time
 import streamlit as st
-from demo_util import (
-    DemoFileIOHelper,
-    DemoTextProcessingHelper,
-    DemoUIHelper,
-    get_demo_dir,
-    get_output_dir,
-    set_storm_runner,
-    StreamlitCallbackHandler,
-    display_article_page,
-    convert_txt_to_md,
-)
+from util.ui_helpers import DemoUIHelper, StreamlitCallbackHandler
+from util.file_io import DemoFileIOHelper
+from util.display_utils import display_article_page
+from util.text_processing import convert_txt_to_md
+from util.path_utils import get_output_dir
+from util.storm_runner import set_storm_runner
 
 
 def apply_custom_css():
@@ -149,32 +143,35 @@ def create_new_article_page():
         callback = ProgressCallback(progress_bar, progress_text)
 
         with status:
-            # Run STORM with fallback
-            runner = st.session_state["run_storm"](
-                st.session_state["page3_topic"],
-                st.session_state["page3_current_working_dir"],
-                callback_handler=callback,
-            )
-            if runner:
-                conversation_log_path = os.path.join(
+            try:
+                # Run STORM with fallback
+                runner = st.session_state["run_storm"](
+                    st.session_state["page3_topic"],
                     st.session_state["page3_current_working_dir"],
-                    st.session_state["page3_topic_name_cleaned"],
-                    "conversation_log.json",
+                    callback_handler=callback,
                 )
-                if os.path.exists(conversation_log_path):
-                    DemoUIHelper.display_persona_conversations(
-                        DemoFileIOHelper.read_json_file(conversation_log_path)
+                if runner:
+                    conversation_log_path = os.path.join(
+                        st.session_state["page3_current_working_dir"],
+                        st.session_state["page3_topic_name_cleaned"],
+                        "conversation_log.json",
                     )
-                st.session_state["page3_write_article_state"] = "final_writing"
-                status.update(label="brain**STORM**ing complete!", state="complete")
-                progress_bar.progress(100)
+                    if os.path.exists(conversation_log_path):
+                        DemoUIHelper.display_persona_conversations(
+                            DemoFileIOHelper.read_json_file(conversation_log_path)
+                        )
+                    st.session_state["page3_write_article_state"] = "final_writing"
+                    status.update(label="brain**STORM**ing complete!", state="complete")
+                    progress_bar.progress(100)
 
-                # Store the runner in the session state
-                st.session_state["runner"] = runner
-            else:
-                st.error("Failed to generate the article.")
+                    # Store the runner in the session state
+                    st.session_state["runner"] = runner
+                else:
+                    raise Exception("STORM runner returned None")
+            except Exception as e:
+                st.error(f"Failed to generate the article: {str(e)}")
                 st.session_state["page3_write_article_state"] = "not started"
-                return  # Exit the function early if runner is None
+                return  # Exit the function early if there's an error
 
     if st.session_state["page3_write_article_state"] == "final_writing":
         # Check if runner exists in the session state

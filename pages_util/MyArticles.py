@@ -1,10 +1,12 @@
 import os
 import logging
-
-import demo_util
 import streamlit as st
-from demo_util import DemoFileIOHelper, DemoUIHelper, get_output_dir
 from streamlit_card import card
+from util.file_io import DemoFileIOHelper
+
+# from util.ui_helpers import DemoUIHelper
+from util.path_utils import get_output_dir
+from util.display_utils import display_article_page
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -49,7 +51,9 @@ def article_card_setup(column_to_add, article_name):
             title="",
             text=cleaned_article_title,
             image=DemoFileIOHelper.read_image_as_base64(
-                os.path.join(demo_util.get_demo_dir(), "assets", "void.jpg")
+                os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)), "assets", "void.jpg"
+                )
             ),
             styles={
                 "card": {
@@ -99,7 +103,6 @@ def my_articles_page():
         # sync my articles
         if "page2_user_articles_file_path_dict" not in st.session_state:
             local_dir = get_output_dir()
-
             st.session_state["page2_user_articles_file_path_dict"] = (
                 DemoFileIOHelper.read_structure_to_dict(local_dir)
             )
@@ -142,7 +145,11 @@ def my_articles_page():
                         title="",
                         text="Start your first research!",
                         image=DemoFileIOHelper.read_image_as_base64(
-                            os.path.join(demo_util.get_demo_dir(), "assets", "void.jpg")
+                            os.path.join(
+                                os.path.dirname(os.path.dirname(__file__)),
+                                "assets",
+                                "void.jpg",
+                            )
                         ),
                         styles={
                             "card": {
@@ -183,7 +190,7 @@ def my_articles_page():
             logging.debug(f"Displaying article: {selected_article_name}")
             logging.debug(f"File path dict: {selected_article_file_path_dict}")
 
-            demo_util.display_article_page(
+            display_article_page(
                 selected_article_name=selected_article_name,
                 selected_article_file_path_dict=selected_article_file_path_dict,
                 show_title=True,

@@ -16,8 +16,8 @@ def mock_file_content():
 @pytest.fixture
 def web_search_wrapper(tmp_path, mock_file_content):
     html_file = (
-        tmp_path / "Wikipedia_Reliable sources_Perennial sources - Wikipedia.html"
-    )
+        tmp_path /
+        "Wikipedia_Reliable sources_Perennial sources - Wikipedia.html")
     html_file.write_text(mock_file_content)
     with patch("os.path.dirname", return_value=str(tmp_path)):
         return WebSearchAPIWrapper(max_results=3)
@@ -152,13 +152,15 @@ def test_duckduckgo_search_api_forward_article_parsing_exception(
             "title": "Example Title",
         },
     ]
-    mock_article.return_value.download.side_effect = Exception("Download failed")
+    mock_article.return_value.download.side_effect = Exception(
+        "Download failed")
 
     ddg_api = DuckDuckGoSearchAPI(max_results=1, use_snippet=False)
     results = ddg_api.forward("test query", [])
 
     assert len(results) == 1
-    assert results[0]["snippets"] == ["Example snippet"]  # Falls back to snippet
+    assert results[0]["snippets"] == [
+        "Example snippet"]  # Falls back to snippet
 
 
 def test_web_search_wrapper_file_not_found(tmp_path):

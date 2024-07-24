@@ -55,14 +55,11 @@ def add_examples_to_runner(runner):
     )
 
     runner.storm_knowledge_curation_module.persona_generator.create_writer_with_persona.find_related_topic.demos = [
-        find_related_topic_example
-    ]
+        find_related_topic_example]
     runner.storm_knowledge_curation_module.persona_generator.create_writer_with_persona.gen_persona.demos = [
-        gen_persona_example
-    ]
+        gen_persona_example]
     runner.storm_outline_generation_module.write_outline.write_page_outline.demos = [
-        write_page_outline_example
-    ]
+        write_page_outline_example]
     runner.storm_article_generation.section_gen.write_section.demos = [
         write_section_example
     ]
@@ -130,7 +127,9 @@ def run_storm_with_fallback(topic, current_working_dir, callback_handler=None):
         return runner
 
     except Exception as e:
-        logging.error(f"Error during Ollama-based generation: {str(e)}", exc_info=True)
+        logging.error(
+            f"Error during Ollama-based generation: {str(e)}",
+            exc_info=True)
         st.warning("Ollama process failed. Falling back to OpenAI...")
 
         # Fallback to OpenAI
@@ -181,7 +180,9 @@ def run_storm_with_fallback(topic, current_working_dir, callback_handler=None):
 
         except Exception as e:
             st.error(f"Error during OpenAI fallback: {str(e)}")
-            logging.error(f"Error during OpenAI fallback: {str(e)}", exc_info=True)
+            logging.error(
+                f"Error during OpenAI fallback: {str(e)}",
+                exc_info=True)
             return None
 
 

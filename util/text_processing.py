@@ -36,12 +36,10 @@ class DemoTextProcessingHelper:
         for persona_conversation_data in json_data:
             if ": " in persona_conversation_data["perspective"]:
                 name, description = persona_conversation_data["perspective"].split(
-                    ": ", 1
-                )
+                    ": ", 1)
             elif "- " in persona_conversation_data["perspective"]:
                 name, description = persona_conversation_data["perspective"].split(
-                    "- ", 1
-                )
+                    "- ", 1)
             else:
                 name, description = "", persona_conversation_data["perspective"]
             cur_conversation = []
@@ -89,7 +87,8 @@ class DemoTextProcessingHelper:
         Returns:
             str: The current time in 'YYYY-MM-DD HH:MM:SS' format.
         """
-        # Load the time zone from the STORM_TIMEZONE environment variable, default to "America/Los_Angeles" if not set
+        # Load the time zone from the STORM_TIMEZONE environment variable,
+        # default to "America/Los_Angeles" if not set
         time_zone_str = os.getenv("STORM_TIMEZONE", "America/Los_Angeles")
         time_zone = pytz.timezone(time_zone_str)
 
@@ -153,9 +152,8 @@ class DemoTextProcessingHelper:
         bibliography_list = []
         sorted_url_to_unified_index = dict(
             sorted(
-                url_to_info["url_to_unified_index"].items(), key=lambda item: item[1]
-            )
-        )
+                url_to_info["url_to_unified_index"].items(),
+                key=lambda item: item[1]))
         for url, index in sorted_url_to_unified_index.items():
             title = url_to_info["url_to_info"][url]["title"]
             bibliography_list.append(f"[{index}]: [{title}]({url})")

@@ -38,7 +38,10 @@ class WebSearchAPIWrapper(dspy.Retrieve):
 
             for category, pattern in patterns.items():
                 matches = re.findall(pattern, content)
-                processed_ids = [id_str.replace("&#39;", "'") for id_str in matches]
+                processed_ids = [
+                    id_str.replace(
+                        "&#39;",
+                        "'") for id_str in matches]
                 setattr(
                     self,
                     category,
@@ -52,7 +55,8 @@ class WebSearchAPIWrapper(dspy.Retrieve):
         except IOError as e:
             logging.error(f"Error reading Wikipedia sources file: {e}")
         except Exception as e:
-            logging.error(f"Unexpected error in _generate_domain_restriction: {e}")
+            logging.error(
+                f"Unexpected error in _generate_domain_restriction: {e}")
 
     def _is_valid_wikipedia_source(self, url):
         parsed_url = urlparse(url)
@@ -64,7 +68,8 @@ class WebSearchAPIWrapper(dspy.Retrieve):
         self, query_or_queries: Union[str, List[str]], exclude_urls: List[str] = []
     ) -> List[Dict[str, Any]]:
         if not dspy.settings.rm:
-            raise ValueError("No RM is loaded. Please load a Retrieval Model first.")
+            raise ValueError(
+                "No RM is loaded. Please load a Retrieval Model first.")
         return super().forward(query_or_queries, exclude_urls=exclude_urls)
 
 
@@ -98,12 +103,15 @@ class DuckDuckGoSearchAPI(WebSearchAPIWrapper):
                         reference = result.get("snippet", "")
                     else:
                         try:
-                            article = newspaper.Article(url, timeout=self.timeout)
+                            article = newspaper.Article(
+                                url, timeout=self.timeout)
                             article.download()
                             article.parse()
-                            reference = article.text or result.get("snippet", "")
+                            reference = article.text or result.get(
+                                "snippet", "")
                         except Exception as e:
-                            logging.error(f"Error extracting content from {url}: {e}")
+                            logging.error(
+                                f"Error extracting content from {url}: {e}")
                             reference = result.get("snippet", "")
 
                     target_result = {
@@ -117,7 +125,8 @@ class DuckDuckGoSearchAPI(WebSearchAPIWrapper):
                 collected_results.extend(results[: self.max_results])
 
             except Exception as e:
-                logging.error(f"Error occurs when searching query {query}: {e}")
+                logging.error(
+                    f"Error occurs when searching query {query}: {e}")
 
         collected_results = [
             r
@@ -158,7 +167,8 @@ class DuckDuckGoAdapter(WebSearchAPIWrapper):
 
         for query in queries:
             try:
-                ddg_results = self.ddg_search.results(query, max_results=self.k)
+                ddg_results = self.ddg_search.results(
+                    query, max_results=self.k)
                 for result in ddg_results:
                     if result[
                         "link"

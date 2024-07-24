@@ -13,7 +13,9 @@ def setup_phoenix():
     """
     Set up Phoenix for tracing and instrumentation.
     """
-    resource = Resource(attributes={ResourceAttributes.PROJECT_NAME: "storm-wiki"})
+    resource = Resource(
+        attributes={
+            ResourceAttributes.PROJECT_NAME: "storm-wiki"})
     tracer_provider = trace_sdk.TracerProvider(resource=resource)
 
     phoenix_collector_endpoint = os.getenv(

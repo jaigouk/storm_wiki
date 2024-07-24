@@ -28,7 +28,8 @@ class DemoFileIOHelper:
                 articles_dict[topic_name] = {}
                 for file_name in os.listdir(topic_path):
                     file_path = os.path.join(topic_path, file_name)
-                    articles_dict[topic_name][file_name] = os.path.abspath(file_path)
+                    articles_dict[topic_name][file_name] = os.path.abspath(
+                        file_path)
         return articles_dict
 
     @staticmethod
@@ -95,7 +96,8 @@ class DemoFileIOHelper:
             modification_time_string, "%Y-%m-%d %H:%M:%S"
         )
         modification_time = california_tz.localize(modification_time)
-        modification_time_utc = modification_time.astimezone(datetime.timezone.utc)
+        modification_time_utc = modification_time.astimezone(
+            datetime.timezone.utc)
         modification_timestamp = modification_time_utc.timestamp()
         os.utime(file_path, (modification_timestamp, modification_timestamp))
 
@@ -142,7 +144,8 @@ class DemoFileIOHelper:
         if latest_mod_time is not None:
             return latest_mod_time.strftime("%Y-%m-%d %H:%M:%S")
         else:
-            return datetime.datetime.now(california_tz).strftime("%Y-%m-%d %H:%M:%S")
+            return datetime.datetime.now(
+                california_tz).strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod
     def assemble_article_data(article_file_path_dict):
@@ -172,14 +175,10 @@ class DemoFileIOHelper:
                 article_data["citations"] = (
                     DemoFileIOHelper._construct_citation_dict_from_search_result(
                         DemoFileIOHelper.read_json_file(
-                            article_file_path_dict["url_to_info.json"]
-                        )
-                    )
-                )
+                            article_file_path_dict["url_to_info.json"])))
             if "conversation_log.json" in article_file_path_dict:
                 article_data["conversation_log"] = DemoFileIOHelper.read_json_file(
-                    article_file_path_dict["conversation_log.json"]
-                )
+                    article_file_path_dict["conversation_log.json"])
             return article_data
         return None
 

@@ -135,10 +135,11 @@ def create_new_article_page():
                     kwargs.get(
                         "message",
                         f"Step {self.current_step + 1}/{len(self.steps)}: {self.steps[self.current_step]}",
-                    )
-                )
-                self.progress_bar.progress((self.current_step + 1) / len(self.steps))
-                self.current_step = min(self.current_step + 1, len(self.steps) - 1)
+                    ))
+                self.progress_bar.progress(
+                    (self.current_step + 1) / len(self.steps))
+                self.current_step = min(
+                    self.current_step + 1, len(self.steps) - 1)
 
         callback = ProgressCallback(progress_bar, progress_text)
 
@@ -158,10 +159,11 @@ def create_new_article_page():
                     )
                     if os.path.exists(conversation_log_path):
                         DemoUIHelper.display_persona_conversations(
-                            DemoFileIOHelper.read_json_file(conversation_log_path)
-                        )
+                            DemoFileIOHelper.read_json_file(conversation_log_path))
                     st.session_state["page3_write_article_state"] = "final_writing"
-                    status.update(label="brain**STORM**ing complete!", state="complete")
+                    status.update(
+                        label="brain**STORM**ing complete!",
+                        state="complete")
                     progress_bar.progress(100)
 
                     # Store the runner in the session state
@@ -199,11 +201,14 @@ def create_new_article_page():
                 st.session_state["runner"].post_run()
 
                 # Convert txt files to md after article generation
-                convert_txt_to_md(st.session_state["page3_current_working_dir"])
+                convert_txt_to_md(
+                    st.session_state["page3_current_working_dir"])
 
                 # update status bar
                 st.session_state["page3_write_article_state"] = "prepare_to_show_result"
-                status.update(label="information synthesis complete!", state="complete")
+                status.update(
+                    label="information synthesis complete!",
+                    state="complete")
             except Exception as e:
                 st.error(f"Error during final article generation: {str(e)}")
                 st.session_state["page3_write_article_state"] = "not started"
@@ -232,7 +237,9 @@ def create_new_article_page():
 
             # update status bar
             st.session_state["page3_write_article_state"] = "prepare_to_show_result"
-            status.update(label="information synthesis complete!", state="complete")
+            status.update(
+                label="information synthesis complete!",
+                state="complete")
 
     if st.session_state["page3_write_article_state"] == "prepare_to_show_result":
         _, show_result_col, _ = st.columns([4, 3, 4])

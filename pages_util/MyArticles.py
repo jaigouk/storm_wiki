@@ -52,9 +52,10 @@ def article_card_setup(column_to_add, article_name):
             text=cleaned_article_title,
             image=DemoFileIOHelper.read_image_as_base64(
                 os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)), "assets", "void.jpg"
-                )
-            ),
+                    os.path.dirname(
+                        os.path.dirname(__file__)),
+                    "assets",
+                    "void.jpg")),
             styles={
                 "card": {
                     "width": "100%",
@@ -119,18 +120,22 @@ def my_articles_page():
                 pagination = st.container()
                 bottom_menu = st.columns((1, 4, 1, 1, 1))[1:-1]
                 with bottom_menu[2]:
-                    batch_size = st.selectbox("Page Size", options=[24, 48, 72])
+                    batch_size = st.selectbox(
+                        "Page Size", options=[24, 48, 72])
                 with bottom_menu[1]:
                     total_pages = max(1, int(len(article_names) / batch_size))
                     current_page = st.number_input(
                         "Page", min_value=1, max_value=total_pages, step=1
                     )
                 with bottom_menu[0]:
-                    st.markdown(f"Page **{current_page}** of **{total_pages}** ")
+                    st.markdown(
+                        f"Page **{current_page}** of **{total_pages}** ")
                 # show article cards
                 with pagination:
                     start_index = (current_page - 1) * batch_size
-                    end_index = min(current_page * batch_size, len(article_names))
+                    end_index = min(
+                        current_page * batch_size,
+                        len(article_names))
                     for i, article_name in enumerate(
                         article_names[start_index:end_index]
                     ):
@@ -146,11 +151,11 @@ def my_articles_page():
                         text="Start your first research!",
                         image=DemoFileIOHelper.read_image_as_base64(
                             os.path.join(
-                                os.path.dirname(os.path.dirname(__file__)),
+                                os.path.dirname(
+                                    os.path.dirname(__file__)),
                                 "assets",
                                 "void.jpg",
-                            )
-                        ),
+                            )),
                         styles={
                             "card": {
                                 "width": "100%",

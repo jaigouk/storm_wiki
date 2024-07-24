@@ -128,7 +128,8 @@ def test_both_models_fail(
     result = run_storm_with_fallback("test topic", "/tmp/test_dir")
 
     assert result is None
-    assert mock_storm_runner.run.call_count == 1  # Only called once (for OpenAI)
+    # Only called once (for OpenAI)
+    assert mock_storm_runner.run.call_count == 1
     mock_storm_runner.post_run.assert_not_called()
 
 
@@ -138,7 +139,9 @@ def test_set_storm_runner(monkeypatch, tmp_path):
     mock_getenv = MagicMock(return_value=str(tmp_path))
 
     monkeypatch.setattr(os, "makedirs", mock_makedirs)
-    monkeypatch.setattr("util.storm_runner.convert_txt_to_md", mock_convert_txt_to_md)
+    monkeypatch.setattr(
+        "util.storm_runner.convert_txt_to_md",
+        mock_convert_txt_to_md)
     monkeypatch.setattr(os, "getenv", mock_getenv)
     monkeypatch.setattr(
         os.path, "exists", lambda x: False
@@ -186,7 +189,8 @@ def test_run_storm_step_success():
     result = run_storm_step("research", "test topic")
 
     assert result is True
-    mock_runner.run.assert_called_once_with(topic="test topic", do_research=True)
+    mock_runner.run.assert_called_once_with(
+        topic="test topic", do_research=True)
 
 
 def test_run_storm_step_failure():

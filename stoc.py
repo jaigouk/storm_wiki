@@ -37,26 +37,29 @@ class stoc:
         st.write(DISABLE_LINK_CSS, unsafe_allow_html=True)
         # st.sidebar.caption("Table of contents")
         if expander is None:
-            expander = st.sidebar.expander("**Table of contents**", expanded=True)
+            expander = st.sidebar.expander(
+                "**Table of contents**", expanded=True)
         with expander:
             with st.container(height=600, border=False):
                 markdown_toc = ""
                 for title_size, title in self.toc_items:
                     h = int(title_size.replace("h", ""))
                     markdown_toc += (
-                            " " * 2 * h
-                            + "- "
-                            + f'<a href="#{normalize(title)}" class="toc"> {title}</a> \n'
+                        " " * 2 * h
+                        + "- "
+                        + f'<a href="#{normalize(title)}" class="toc"> {title}</a> \n'
                     )
                 # st.sidebar.write(markdown_toc, unsafe_allow_html=True)
                 st.write(markdown_toc, unsafe_allow_html=True)
 
     @classmethod
     def get_toc(cls, markdown_text: str, topic=""):
-        def increase_heading_depth_and_add_top_heading(markdown_text, new_top_heading):
+        def increase_heading_depth_and_add_top_heading(
+                markdown_text, new_top_heading):
             lines = markdown_text.splitlines()
             # Increase the depth of each heading by adding an extra '#'
-            increased_depth_lines = ['#' + line if line.startswith('#') else line for line in lines]
+            increased_depth_lines = [
+                '#' + line if line.startswith('#') else line for line in lines]
             # Add the new top-level heading at the beginning
             increased_depth_lines.insert(0, f"# {new_top_heading}")
             # Re-join the modified lines back into a single string
@@ -64,14 +67,21 @@ class stoc:
             return modified_text
 
         if topic:
-            markdown_text = increase_heading_depth_and_add_top_heading(markdown_text, topic)
+            markdown_text = increase_heading_depth_and_add_top_heading(
+                markdown_text, topic)
         toc = []
         for line in markdown_text.splitlines():
             if line.startswith('#'):
                 # Remove the '#' characters and strip leading/trailing spaces
                 heading_text = line.lstrip('#').strip()
-                # Create slug (lowercase, spaces to hyphens, remove non-alphanumeric characters)
-                slug = re.sub(r'[^a-zA-Z0-9\s-]', '', heading_text).lower().replace(' ', '-')
+                # Create slug (lowercase, spaces to hyphens, remove
+                # non-alphanumeric characters)
+                slug = re.sub(
+                    r'[^a-zA-Z0-9\s-]',
+                    '',
+                    heading_text).lower().replace(
+                    ' ',
+                    '-')
                 # Determine heading level for indentation
                 level = line.count('#') - 1
                 # Add to the table of contents

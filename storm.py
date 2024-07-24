@@ -72,21 +72,25 @@ def main():
         st.rerun()
 
     st.write(
-        "<style>div.block-container{padding-top:2rem;}</style>", unsafe_allow_html=True
-    )
+        "<style>div.block-container{padding-top:2rem;}</style>",
+        unsafe_allow_html=True)
     menu_container = st.container()
     with menu_container:
         pages = ["My Articles", "Create New Article"]
         menu_selection = option_menu(
             None,
             pages,
-            icons=["house", "pencil-square"],
+            icons=[
+                "house",
+                "pencil-square"],
             menu_icon="cast",
             default_index=0,
             orientation="horizontal",
             manual_select=st.session_state.selected_page,
             styles={
-                "container": {"padding": "0.2rem 0", "background-color": "#22222200"},
+                "container": {
+                    "padding": "0.2rem 0",
+                    "background-color": "#22222200"},
             },
             key="menu_selection",
         )

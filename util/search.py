@@ -5,7 +5,8 @@ from urllib.parse import urlparse
 from typing import Union, List, Dict, Any
 
 import dspy
-import newspaper
+import requests
+from bs4 import BeautifulSoup
 from langchain_community.utilities.duckduckgo_search import DuckDuckGoSearchAPIWrapper
 
 
@@ -38,10 +39,7 @@ class WebSearchAPIWrapper(dspy.Retrieve):
 
             for category, pattern in patterns.items():
                 matches = re.findall(pattern, content)
-                processed_ids = [
-                    id_str.replace(
-                        "&#39;",
-                        "'") for id_str in matches]
+                processed_ids = [id_str.replace("&#39;", "'") for id_str in matches]
                 setattr(
                     self,
                     category,
@@ -55,8 +53,7 @@ class WebSearchAPIWrapper(dspy.Retrieve):
         except IOError as e:
             logging.error(f"Error reading Wikipedia sources file: {e}")
         except Exception as e:
-            logging.error(
-                f"Unexpected error in _generate_domain_restriction: {e}")
+            logging.error(f"Unexpected error in _generate_domain_restriction: {e}")
 
     def _is_valid_wikipedia_source(self, url):
         parsed_url = urlparse(url)
@@ -68,8 +65,7 @@ class WebSearchAPIWrapper(dspy.Retrieve):
         self, query_or_queries: Union[str, List[str]], exclude_urls: List[str] = []
     ) -> List[Dict[str, Any]]:
         if not dspy.settings.rm:
-            raise ValueError(
-                "No RM is loaded. Please load a Retrieval Model first.")
+            raise ValueError("No RM is loaded. Please load a Retrieval Model first.")
         return super().forward(query_or_queries, exclude_urls=exclude_urls)
 
 
@@ -103,15 +99,11 @@ class DuckDuckGoSearchAPI(WebSearchAPIWrapper):
                         reference = result.get("snippet", "")
                     else:
                         try:
-                            article = newspaper.Article(
-                                url, timeout=self.timeout)
-                            article.download()
-                            article.parse()
-                            reference = article.text or result.get(
-                                "snippet", "")
+                            response = requests.get(url, timeout=self.timeout)
+                            soup = BeautifulSoup(response.text, "html.parser")
+                            reference = soup.get_text() or result.get("snippet", "")
                         except Exception as e:
-                            logging.error(
-                                f"Error extracting content from {url}: {e}")
+                            logging.error(f"Error extracting content from {url}: {e}")
                             reference = result.get("snippet", "")
 
                     target_result = {
@@ -125,8 +117,7 @@ class DuckDuckGoSearchAPI(WebSearchAPIWrapper):
                 collected_results.extend(results[: self.max_results])
 
             except Exception as e:
-                logging.error(
-                    f"Error occurs when searching query {query}: {e}")
+                logging.error(f"Error occurs when searching query {query}: {e}")
 
         collected_results = [
             r
@@ -163,19 +154,19 @@ class DuckDuckGoAdapter(WebSearchAPIWrapper):
             if isinstance(query_or_queries, str)
             else query_or_queries
         )
-        results = []
+        all_results = []
 
         for query in queries:
+            query_results = []
             try:
-                ddg_results = self.ddg_search.results(
-                    query, max_results=self.k)
+                ddg_results = self.ddg_search.results(query, max_results=self.k)
                 for result in ddg_results:
                     if result[
                         "link"
                     ] not in exclude_urls and self._is_valid_wikipedia_source(
                         result["link"]
                     ):
-                        results.append(
+                        query_results.append(
                             {
                                 "description": result.get("snippet", ""),
                                 "snippets": [result.get("snippet", "")],
@@ -183,17 +174,17 @@ class DuckDuckGoAdapter(WebSearchAPIWrapper):
                                 "url": result["link"],
                             }
                         )
-                    if len(results) >= self.k:
+                    if len(query_results) >= self.k:
                         break
-                if len(results) >= self.k:
-                    break
             except Exception as e:
                 logging.error(
                     f"Error occurred while searching query '{query}': {e}",
                     exc_info=True,
                 )
 
-        if not results:
-            logging.warning(f"No results found for query: {query_or_queries}")
+            all_results.extend(query_results)
 
-        return results[: self.k]
+        if not all_results:
+            logging.warning(f"No results found for queries: {query_or_queries}")
+
+        return all_results

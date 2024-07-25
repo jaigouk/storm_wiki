@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import streamlit as st
 from util.ui_helpers import DemoUIHelper, StreamlitCallbackHandler
 from util.file_io import DemoFileIOHelper
@@ -58,6 +59,19 @@ def apply_custom_css():
     )
 
 
+def sanitize_title(title):
+    # Remove leading/trailing spaces and replace internal spaces with underscores
+    return title.strip().replace(" ", "_")
+
+
+def add_date_to_file(file_path):
+    with open(file_path, "r+") as f:
+        content = f.read()
+        f.seek(0, 0)
+        date_string = datetime.now().strftime("Last Modified: %Y-%m-%d %H:%M:%S")
+        f.write(f"{date_string}\n\n{content}")
+
+
 def create_new_article_page():
     apply_custom_css()
 
@@ -93,10 +107,8 @@ def create_new_article_page():
                     if not st.session_state["page3_topic"].strip():
                         st.warning("Topic could not be empty", icon="⚠️")
                     else:
-                        st.session_state["page3_topic_name_cleaned"] = (
+                        st.session_state["page3_topic_name_cleaned"] = sanitize_title(
                             st.session_state["page3_topic"]
-                            .replace(" ", "_")
-                            .replace("/", "_")
                         )
                         st.session_state["page3_write_article_state"] = "initiated"
                         st.rerun()
@@ -196,38 +208,37 @@ def create_new_article_page():
                 # Convert txt files to md after article generation
                 convert_txt_to_md(st.session_state["page3_current_working_dir"])
 
+                # Rename the polished article file and add date
+                old_file_path = os.path.join(
+                    st.session_state["page3_current_working_dir"],
+                    st.session_state["page3_topic_name_cleaned"],
+                    "storm_gen_article_polished.md",
+                )
+                new_file_path = os.path.join(
+                    st.session_state["page3_current_working_dir"],
+                    st.session_state["page3_topic_name_cleaned"],
+                    f"{st.session_state['page3_topic_name_cleaned']}.md",
+                )
+
+                if os.path.exists(old_file_path):
+                    os.rename(old_file_path, new_file_path)
+                    add_date_to_file(new_file_path)
+
+                # Remove the unpolished article file
+                unpolished_file_path = os.path.join(
+                    st.session_state["page3_current_working_dir"],
+                    st.session_state["page3_topic_name_cleaned"],
+                    "storm_gen_article.md",
+                )
+                if os.path.exists(unpolished_file_path):
+                    os.remove(unpolished_file_path)
+
                 # update status bar
                 st.session_state["page3_write_article_state"] = "prepare_to_show_result"
                 status.update(label="information synthesis complete!", state="complete")
             except Exception as e:
                 st.error(f"Error during final article generation: {str(e)}")
                 st.session_state["page3_write_article_state"] = "not started"
-
-    if st.session_state["page3_write_article_state"] == "final_writing":
-        # polish final article
-        with st.status(
-            "Now I will connect the information I found for your reference. (This may take 4-5 minutes.)"
-        ) as status:
-            st.info(
-                "Now I will connect the information I found for your reference. (This may take 4-5 minutes.)"
-            )
-            st.session_state["runner"].run(
-                topic=st.session_state["page3_topic"],
-                do_research=False,
-                do_generate_outline=False,
-                do_generate_article=True,
-                do_polish_article=True,
-                remove_duplicate=False,
-            )
-            # finish the session
-            st.session_state["runner"].post_run()
-
-            # Convert txt files to md after article generation
-            convert_txt_to_md(st.session_state["page3_current_working_dir"])
-
-            # update status bar
-            st.session_state["page3_write_article_state"] = "prepare_to_show_result"
-            status.update(label="information synthesis complete!", state="complete")
 
     if st.session_state["page3_write_article_state"] == "prepare_to_show_result":
         _, show_result_col, _ = st.columns([4, 3, 4])
@@ -241,12 +252,22 @@ def create_new_article_page():
         current_working_dir_paths = DemoFileIOHelper.read_structure_to_dict(
             st.session_state["page3_current_working_dir"]
         )
-        current_article_file_path_dict = current_working_dir_paths[
-            st.session_state["page3_topic_name_cleaned"]
-        ]
-        display_article_page(
-            selected_article_name=st.session_state["page3_topic_name_cleaned"],
-            selected_article_file_path_dict=current_article_file_path_dict,
-            show_title=True,
-            show_main_article=True,
+        current_article_file_path_dict = current_working_dir_paths.get(
+            st.session_state["page3_topic_name_cleaned"], {}
         )
+
+        if not current_article_file_path_dict:
+            st.error(
+                f"No article data found for topic: {st.session_state['page3_topic_name_cleaned']}"
+            )
+            st.error(
+                f"Current working directory: {st.session_state['page3_current_working_dir']}"
+            )
+            st.error(f"Directory structure: {current_working_dir_paths}")
+        else:
+            display_article_page(
+                selected_article_name=st.session_state["page3_topic_name_cleaned"],
+                selected_article_file_path_dict=current_article_file_path_dict,
+                show_title=True,
+                show_main_article=True,
+            )

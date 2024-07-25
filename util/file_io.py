@@ -3,24 +3,13 @@ import json
 import base64
 import datetime
 import pytz
+from typing import Dict, Any, Optional, List
 from .shared_utils import parse
 
 
 class DemoFileIOHelper:
     @staticmethod
-    def read_structure_to_dict(articles_root_path):
-        """
-        Reads the directory structure of articles stored in the given root path and
-        returns a nested dictionary. The outer dictionary has article names as keys,
-        and each value is another dictionary mapping file names to their absolute paths.
-
-        Args:
-            articles_root_path (str): The root directory path containing article subdirectories.
-
-        Returns:
-            dict: A dictionary where each key is an article name, and each value is a dictionary
-                of file names and their absolute paths within that article's directory.
-        """
+    def read_structure_to_dict(articles_root_path: str) -> Dict[str, Dict[str, str]]:
         articles_dict = {}
         for topic_name in os.listdir(articles_root_path):
             topic_path = os.path.join(articles_root_path, topic_name)
@@ -28,54 +17,21 @@ class DemoFileIOHelper:
                 articles_dict[topic_name] = {}
                 for file_name in os.listdir(topic_path):
                     file_path = os.path.join(topic_path, file_name)
-                    articles_dict[topic_name][file_name] = os.path.abspath(
-                        file_path)
+                    articles_dict[topic_name][file_name] = os.path.abspath(file_path)
         return articles_dict
 
     @staticmethod
-    def read_txt_file(file_path):
-        """
-        Reads the contents of a text file and returns it as a string.
-
-        Args:
-            file_path (str): The path to the text file to be read.
-
-        Returns:
-            str: The content of the file as a single string.
-        """
+    def read_txt_file(file_path: str) -> str:
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
 
     @staticmethod
-    def read_json_file(file_path):
-        """
-        Reads a JSON file and returns its content as a Python dictionary or list,
-        depending on the JSON structure.
-
-        Args:
-            file_path (str): The path to the JSON file to be read.
-
-        Returns:
-            dict or list: The content of the JSON file. The type depends on the
-                        structure of the JSON file (object or array at the root).
-        """
+    def read_json_file(file_path: str) -> Any:
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     @staticmethod
-    def read_image_as_base64(image_path):
-        """
-        Reads an image file and returns its content encoded as a base64 string,
-        suitable for embedding in HTML or transferring over networks where binary
-        data cannot be easily sent.
-
-        Args:
-            image_path (str): The path to the image file to be encoded.
-
-        Returns:
-            str: The base64 encoded string of the image, prefixed with the necessary
-                data URI scheme for images.
-        """
+    def read_image_as_base64(image_path: str) -> str:
         with open(image_path, "rb") as f:
             data = f.read()
             encoded = base64.b64encode(data)
@@ -83,35 +39,20 @@ class DemoFileIOHelper:
         return data
 
     @staticmethod
-    def set_file_modification_time(file_path, modification_time_string):
-        """
-        Sets the modification time of a file based on a given time string in the California time zone.
-
-        Args:
-            file_path (str): The path to the file.
-            modification_time_string (str): The desired modification time in 'YYYY-MM-DD HH:MM:SS' format.
-        """
+    def set_file_modification_time(
+        file_path: str, modification_time_string: str
+    ) -> None:
         california_tz = pytz.timezone("America/Los_Angeles")
         modification_time = datetime.datetime.strptime(
             modification_time_string, "%Y-%m-%d %H:%M:%S"
         )
         modification_time = california_tz.localize(modification_time)
-        modification_time_utc = modification_time.astimezone(
-            datetime.timezone.utc)
+        modification_time_utc = modification_time.astimezone(datetime.timezone.utc)
         modification_timestamp = modification_time_utc.timestamp()
         os.utime(file_path, (modification_timestamp, modification_timestamp))
 
     @staticmethod
-    def get_latest_modification_time(path):
-        """
-        Returns the latest modification time of all files in a directory in the California time zone as a string.
-
-        Args:
-            path (str): The path to the directory or file.
-
-        Returns:
-            str: The latest file's modification time in 'YYYY-MM-DD HH:MM:SS' format.
-        """
+    def get_latest_modification_time(path: str) -> str:
         california_tz = pytz.timezone("America/Los_Angeles")
         latest_mod_time = None
 
@@ -144,55 +85,77 @@ class DemoFileIOHelper:
         if latest_mod_time is not None:
             return latest_mod_time.strftime("%Y-%m-%d %H:%M:%S")
         else:
-            return datetime.datetime.now(
-                california_tz).strftime("%Y-%m-%d %H:%M:%S")
+            return datetime.datetime.now(california_tz).strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod
-    def assemble_article_data(article_file_path_dict):
-        if (
-            "storm_gen_article.md" in article_file_path_dict
-            or "storm_gen_article_polished.md" in article_file_path_dict
-        ):
-            full_article_name = (
-                "storm_gen_article_polished.md"
-                if "storm_gen_article_polished.md" in article_file_path_dict
-                else "storm_gen_article.md"
-            )
+    def assemble_article_data(
+        article_file_path_dict: Dict[str, str],
+    ) -> Optional[Dict[str, Any]]:
+        if not isinstance(article_file_path_dict, dict):
+            raise TypeError("article_file_path_dict must be a dictionary")
+
+        article_file = next(
+            (f for f in article_file_path_dict.keys() if f.endswith(".md")), None
+        )
+        if not article_file:
+            print("No .md file found in the article_file_path_dict")
+            return None
+
+        try:
             # Read the article content
             article_content = DemoFileIOHelper.read_txt_file(
-                article_file_path_dict[full_article_name]
+                article_file_path_dict[article_file]
             )
-
-            # Add the current date at the beginning of the article
-            current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-            article_content = f"{current_date}\n\n{article_content}"
 
             # Parse the article content
             parsed_article_content = parse(article_content)
 
             article_data = {"article": parsed_article_content}
+
+            # Add citations if available
             if "url_to_info.json" in article_file_path_dict:
-                article_data["citations"] = (
-                    DemoFileIOHelper._construct_citation_dict_from_search_result(
-                        DemoFileIOHelper.read_json_file(
-                            article_file_path_dict["url_to_info.json"])))
+                try:
+                    article_data["citations"] = (
+                        DemoFileIOHelper._construct_citation_dict_from_search_result(
+                            DemoFileIOHelper.read_json_file(
+                                article_file_path_dict["url_to_info.json"]
+                            )
+                        )
+                    )
+                except json.JSONDecodeError:
+                    print("Error decoding url_to_info.json")
+
+            # Add conversation log if available
             if "conversation_log.json" in article_file_path_dict:
-                article_data["conversation_log"] = DemoFileIOHelper.read_json_file(
-                    article_file_path_dict["conversation_log.json"])
+                try:
+                    conversation_log = DemoFileIOHelper.read_json_file(
+                        article_file_path_dict["conversation_log.json"]
+                    )
+                    # Map agent numbers to names
+                    agent_names = {0: "User", 1: "AI Assistant", 2: "Expert"}
+                    for entry in conversation_log:
+                        if "agent" in entry and isinstance(entry["agent"], int):
+                            entry["agent"] = agent_names.get(
+                                entry["agent"], f"Agent {entry['agent']}"
+                            )
+                    article_data["conversation_log"] = conversation_log
+                except json.JSONDecodeError:
+                    print("Error decoding conversation_log.json")
+
             return article_data
+        except FileNotFoundError as e:
+            print(f"File not found: {e}")
+        except IOError as e:
+            print(f"IO error occurred: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
         return None
 
     @staticmethod
-    def _construct_citation_dict_from_search_result(search_results):
-        """
-        Constructs a citation dictionary from search results.
-
-        Args:
-            search_results (dict): A dictionary containing search results.
-
-        Returns:
-            dict or None: A dictionary of citations, or None if search_results is None.
-        """
+    def _construct_citation_dict_from_search_result(
+        search_results: Dict[str, Any],
+    ) -> Optional[Dict[str, Dict[str, Any]]]:
         if search_results is None:
             return None
         citation_dict = {}

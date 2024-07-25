@@ -21,28 +21,22 @@ def display_article_page(
             )
 
         if show_main_article:
-            display_main_article(
-                selected_article_file_path_dict,
-                show_feedback_form,
-                show_qa_panel)
+            article_data = DemoFileIOHelper.assemble_article_data(
+                selected_article_file_path_dict
+            )
+
+            if article_data is None:
+                st.warning("No article data found.")
+                return
+
+            display_main_article(article_data, show_feedback_form, show_qa_panel)
     except Exception as e:
         st.error(f"Error displaying article: {str(e)}")
         st.exception(e)
 
 
-def display_main_article(
-        selected_article_file_path_dict,
-        show_feedback_form=False,
-        show_qa_panel=False):
+def display_main_article(article_data, show_feedback_form=False, show_qa_panel=False):
     try:
-        article_data = DemoFileIOHelper.assemble_article_data(
-            selected_article_file_path_dict
-        )
-
-        if article_data is None:
-            st.warning("No article data found.")
-            return
-
         with st.container(height=1000, border=True):
             table_content_sidebar = st.sidebar.expander(
                 "**Table of contents**", expanded=True
@@ -57,9 +51,7 @@ def display_main_article(
         if "citations" in article_data:
             with st.sidebar.expander("**References**", expanded=True):
                 with st.container(height=800, border=False):
-                    _display_references(
-                        citation_dict=article_data.get(
-                            "citations", {}))
+                    _display_references(citation_dict=article_data.get("citations", {}))
 
         # display conversation history
         if "conversation_log" in article_data:
@@ -85,9 +77,7 @@ def display_main_article(
 
 def _display_references(citation_dict):
     if citation_dict:
-        reference_list = [
-            f"reference [{i}]" for i in range(
-                1, len(citation_dict) + 1)]
+        reference_list = [f"reference [{i}]" for i in range(1, len(citation_dict) + 1)]
         selected_key = st.selectbox("Select a reference", reference_list)
         citation_val = citation_dict[reference_list.index(selected_key) + 1]
         citation_val["title"] = citation_val["title"].replace("$", "\\$")
@@ -99,15 +89,12 @@ def _display_references(citation_dict):
         st.markdown("**No references available**")
 
 
-def display_main_article_text(
-        article_text,
-        citation_dict,
-        table_content_sidebar):
+def display_main_article_text(article_text, citation_dict, table_content_sidebar):
     # Post-process the generated article for better display.
     if "Write the lead section:" in article_text:
         article_text = article_text[
             article_text.find("Write the lead section:")
-            + len("Write the lead section:"):
+            + len("Write the lead section:") :
         ]
     if article_text[0] == "#":
         article_text = "\n".join(article_text.split("\n")[1:])

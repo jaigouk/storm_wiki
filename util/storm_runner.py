@@ -55,11 +55,14 @@ def add_examples_to_runner(runner):
     )
 
     runner.storm_knowledge_curation_module.persona_generator.create_writer_with_persona.find_related_topic.demos = [
-        find_related_topic_example]
+        find_related_topic_example
+    ]
     runner.storm_knowledge_curation_module.persona_generator.create_writer_with_persona.gen_persona.demos = [
-        gen_persona_example]
+        gen_persona_example
+    ]
     runner.storm_outline_generation_module.write_outline.write_page_outline.demos = [
-        write_page_outline_example]
+        write_page_outline_example
+    ]
     runner.storm_article_generation.section_gen.write_section.demos = [
         write_section_example
     ]
@@ -123,13 +126,25 @@ def run_storm_with_fallback(topic, current_working_dir, callback_handler=None):
         log_progress(
             f"Ollama STORM process completed in {end_time - start_time:.2f} seconds."
         )
+
+        raw_search_results_path = os.path.join(
+            current_working_dir, topic.replace(" ", "_"), "raw_search_results.json"
+        )
+        if os.path.exists(raw_search_results_path):
+            with open(raw_search_results_path, "r") as f:
+                raw_search_results = json.load(f)
+
+            # Process raw search results into citations
+            citations = process_raw_search_results(raw_search_results)
+
+            # Add citations to the final markdown file
+            add_citations_to_markdown(current_working_dir, topic, citations)
+
         runner.post_run()
         return runner
 
     except Exception as e:
-        logging.error(
-            f"Error during Ollama-based generation: {str(e)}",
-            exc_info=True)
+        logging.error(f"Error during Ollama-based generation: {str(e)}", exc_info=True)
         st.warning("Ollama process failed. Falling back to OpenAI...")
 
         # Fallback to OpenAI
@@ -180,10 +195,36 @@ def run_storm_with_fallback(topic, current_working_dir, callback_handler=None):
 
         except Exception as e:
             st.error(f"Error during OpenAI fallback: {str(e)}")
-            logging.error(
-                f"Error during OpenAI fallback: {str(e)}",
-                exc_info=True)
+            logging.error(f"Error during OpenAI fallback: {str(e)}", exc_info=True)
             return None
+
+
+def process_raw_search_results(raw_results):
+    citations = {}
+    for i, result in enumerate(raw_results, start=1):
+        citations[i] = {
+            "title": result.get("title", ""),
+            "url": result.get("url", ""),
+            "snippets": result.get("snippets", []),
+        }
+    return citations
+
+
+def add_citations_to_markdown(working_dir, topic, citations):
+    markdown_path = os.path.join(
+        working_dir, topic.replace(" ", "_"), f"{topic.replace(' ', '_')}.md"
+    )
+    if os.path.exists(markdown_path):
+        with open(markdown_path, "r") as f:
+            content = f.read()
+
+        # Add citations to the end of the file
+        content += "\n\n## References\n"
+        for i, citation in citations.items():
+            content += f"{i}. [{citation['title']}]({citation['url']})\n"
+
+        with open(markdown_path, "w") as f:
+            f.write(content)
 
 
 def set_storm_runner():

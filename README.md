@@ -7,12 +7,13 @@
 
 - Dracula soft dark color
 - Duckduckgo
-- gpt-4o-mini
+- gpt-4o-mini as a fallback option
 - dotenv for env vars
 - save result files as '*.md'
 - add date to to top of the result file
 - added STORM_TIMEZONE
 - added arize-phoenix to trace. added PHOENIX_COLLECTOR_ENDPOINT
+- added searxng and SEARXNG_BASE_URL env var as a fallback option
 
 ![storm](./assets/storm.png)
 

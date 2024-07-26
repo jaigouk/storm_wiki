@@ -7,6 +7,7 @@ from util.display_utils import display_article_page
 from util.text_processing import convert_txt_to_md
 from util.path_utils import get_output_dir
 from util.storm_runner import set_storm_runner
+from util.storm_runner import set_storm_runner, process_search_results
 
 
 def apply_custom_css():
@@ -204,6 +205,12 @@ def create_new_article_page():
                 )
                 # finish the session
                 st.session_state["runner"].post_run()
+
+                process_search_results(
+                    st.session_state["runner"],
+                    st.session_state["page3_current_working_dir"],
+                    st.session_state["page3_topic"],
+                )
 
                 # Convert txt files to md after article generation
                 convert_txt_to_md(st.session_state["page3_current_working_dir"])

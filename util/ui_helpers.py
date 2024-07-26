@@ -104,13 +104,18 @@ class DemoUIHelper:
         """
         Display persona conversation in dialogue UI
         """
-        # get personas list as (persona_name, persona_description, dialogue
-        # turns list) tuple
+        # get personas list as (persona_name, persona_description, dialogue turns list) tuple
         parsed_conversation_history = (
-            DemoTextProcessingHelper.parse_conversation_history(conversation_log))
+            DemoTextProcessingHelper.parse_conversation_history(conversation_log)
+        )
+
         # construct tabs for each persona conversation
         persona_tabs = st.tabs(
-            [name for (name, _, _) in parsed_conversation_history])
+            [
+                name if name else f"Persona {i}"
+                for i, (name, _, _) in enumerate(parsed_conversation_history)
+            ]
+        )
         for idx, persona_tab in enumerate(persona_tabs):
             with persona_tab:
                 # show persona description
@@ -138,7 +143,8 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
         perspective_list = "\n- ".join(perspectives)
         self.status_container.success(
             f"Finish identifying perspectives. Will now start gathering information"
-            f" from the following perspectives:\n- {perspective_list}")
+            f" from the following perspectives:\n- {perspective_list}"
+        )
 
     def on_information_gathering_start(self, **kwargs):
         self.status_container.info("Start browsing the Internet.")
@@ -174,5 +180,4 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
         )
 
     def on_outline_refinement_end(self, outline: str, **kwargs):
-        self.status_container.success(
-            f"Finish leveraging the collected information.")
+        self.status_container.success(f"Finish leveraging the collected information.")

@@ -1,7 +1,8 @@
 import os
 import time
+import json
 import streamlit as st
-from typing import Optional
+from typing import Optional, Dict, Any
 import logging
 from dspy import Example
 
@@ -11,8 +12,11 @@ from knowledge_storm import (
     STORMWikiLMConfigs,
 )
 from knowledge_storm.lm import OpenAIModel, OllamaClient
-from .search import DuckDuckGoAdapter
+from .search import CombinedSearchAPI
 from .artifact_helpers import convert_txt_to_md
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def add_examples_to_runner(runner):
@@ -22,6 +26,7 @@ def add_examples_to_runner(runner):
         "https://en.wikipedia.org/wiki/Information_science\n"
         "https://en.wikipedia.org/wiki/Library_science\n",
     )
+    # TODO: add to consts
     gen_persona_example = Example(
         topic="Knowledge Curation",
         examples="Title: Knowledge management\n"
@@ -68,37 +73,31 @@ def add_examples_to_runner(runner):
     ]
 
 
-def run_storm_with_fallback(topic, current_working_dir, callback_handler=None):
-    def log_progress(message):
+def run_storm_with_fallback(
+    topic: str, current_working_dir: str, callback_handler=None
+):
+    def log_progress(message: str):
         st.info(message)
-        logging.info(message)
+        logger.info(message)
         if callback_handler:
             callback_handler.on_information_gathering_start(message=message)
 
     log_progress("Initializing language models...")
     llm_configs = STORMWikiLMConfigs()
 
+    # TODO: add to settings
     engine_args = STORMWikiRunnerArguments(
         output_dir=current_working_dir,
         max_conv_turn=3,
         max_perspective=3,
-        search_top_k=3,
-        retrieve_top_k=5,
+        search_top_k=20,
+        retrieve_top_k=20,
     )
 
     log_progress("Setting up search engine...")
-    rm = DuckDuckGoAdapter(k=engine_args.search_top_k)
+    rm = CombinedSearchAPI(max_results=engine_args.search_top_k)
 
-    # Try Ollama first
-    try:
-        log_progress("Starting STORM process with Ollama...")
-        ollama_kwargs = {
-            "model": "jaigouk/hermes-2-theta-llama-3:latest",
-            "url": "http://localhost",
-            "port": 11434,
-            "stop": ("\n\n---",),
-        }
-
+    def setup_and_run(lm_class, **kwargs):
         for lm_type in [
             "conv_simulator",
             "question_asker",
@@ -106,125 +105,87 @@ def run_storm_with_fallback(topic, current_working_dir, callback_handler=None):
             "article_gen",
             "article_polish",
         ]:
-            max_tokens = 4000 if lm_type == "article_polish" else 500
-            lm = OllamaClient(max_tokens=max_tokens, **ollama_kwargs)
+            # TODO: add to settings
+            max_tokens = 1000 if lm_type == "article_polish" else 2000
+            lm = lm_class(max_tokens=max_tokens, **kwargs)
             getattr(llm_configs, f"set_{lm_type}_lm")(lm)
 
         runner = STORMWikiRunner(engine_args, llm_configs, rm)
         add_examples_to_runner(runner)
-
-        start_time = time.time()
-        result = runner.run(
+        runner.run(
             topic=topic,
             do_research=True,
             do_generate_outline=True,
             do_generate_article=True,
             do_polish_article=True,
         )
-        end_time = time.time()
-
-        log_progress(
-            f"Ollama STORM process completed in {end_time - start_time:.2f} seconds."
-        )
-
-        raw_search_results_path = os.path.join(
-            current_working_dir, topic.replace(" ", "_"), "raw_search_results.json"
-        )
-        if os.path.exists(raw_search_results_path):
-            with open(raw_search_results_path, "r") as f:
-                raw_search_results = json.load(f)
-
-            # Process raw search results into citations
-            citations = process_raw_search_results(raw_search_results)
-
-            # Add citations to the final markdown file
-            add_citations_to_markdown(current_working_dir, topic, citations)
-
         runner.post_run()
         return runner
 
-    except Exception as e:
-        logging.error(f"Error during Ollama-based generation: {str(e)}", exc_info=True)
-        st.warning("Ollama process failed. Falling back to OpenAI...")
-
-        # Fallback to OpenAI
-        try:
-            log_progress("Starting OpenAI fallback process...")
-            llm_configs = STORMWikiLMConfigs()
-            llm_configs.init_openai_model(
-                openai_api_key=st.secrets["OPENAI_API_KEY"],
-                openai_type="openai",
-            )
-
-            openai_model = OpenAIModel(
-                model="gpt-4o-mini-2024-07-18",
-                api_key=st.secrets["OPENAI_API_KEY"],
-                api_provider="openai",
-                max_tokens=2000,
-                temperature=0.3,
-                top_p=0.9,
-            )
-
-            for lm_type in [
-                "conv_simulator",
-                "question_asker",
-                "outline_gen",
-                "article_gen",
-                "article_polish",
-            ]:
-                getattr(llm_configs, f"set_{lm_type}_lm")(openai_model)
-
-            runner = STORMWikiRunner(engine_args, llm_configs, rm)
-            add_examples_to_runner(runner)
-
-            start_time = time.time()
-            runner.run(
-                topic=topic,
-                do_research=True,
-                do_generate_outline=True,
-                do_generate_article=True,
-                do_polish_article=True,
-            )
-            end_time = time.time()
-
-            log_progress(
-                f"OpenAI fallback process completed in {end_time - start_time:.2f} seconds."
-            )
-            runner.post_run()
-            return runner
-
-        except Exception as e:
-            st.error(f"Error during OpenAI fallback: {str(e)}")
-            logging.error(f"Error during OpenAI fallback: {str(e)}", exc_info=True)
-            return None
+    log_progress("Starting STORM process with Ollama...")
+    # TODO: add to settings
+    ollama_kwargs = {
+        "model": "jaigouk/hermes-2-theta-llama-3:latest",
+        "url": "http://localhost",
+        "port": 11434,
+        "stop": ("\n\n---",),
+    }
+    return setup_and_run(OllamaClient, **ollama_kwargs)
 
 
-def process_raw_search_results(raw_results):
+def process_raw_search_results(
+    raw_results: Dict[str, Any],
+) -> Dict[int, Dict[str, str]]:
     citations = {}
-    for i, result in enumerate(raw_results, start=1):
+    for i, result in enumerate(raw_results.get("results", []), start=1):
         citations[i] = {
             "title": result.get("title", ""),
             "url": result.get("url", ""),
-            "snippets": result.get("snippets", []),
+            "snippets": result.get("content", ""),
         }
     return citations
 
 
-def add_citations_to_markdown(working_dir, topic, citations):
-    markdown_path = os.path.join(
-        working_dir, topic.replace(" ", "_"), f"{topic.replace(' ', '_')}.md"
-    )
+def process_search_results(runner, current_working_dir: str, topic: str):
+    topic_dir = os.path.join(current_working_dir, topic.replace(" ", "_"))
+    raw_search_results_path = os.path.join(topic_dir, "raw_search_results.json")
+    markdown_path = os.path.join(topic_dir, f"{topic.replace(' ', '_')}.md")
+
+    if os.path.exists(raw_search_results_path):
+        try:
+            with open(raw_search_results_path, "r") as f:
+                raw_search_results = json.load(f)
+
+            citations = process_raw_search_results(raw_search_results)
+            add_citations_to_markdown(markdown_path, citations)
+            logger.info(f"Citations added to {markdown_path}")
+        except json.JSONDecodeError:
+            logger.error(f"Error decoding JSON from {raw_search_results_path}")
+        except Exception as e:
+            logger.error(f"Error processing search results: {str(e)}", exc_info=True)
+    else:
+        logger.warning(f"Raw search results file not found: {raw_search_results_path}")
+
+
+def add_citations_to_markdown(markdown_path: str, citations: Dict[int, Dict[str, str]]):
     if os.path.exists(markdown_path):
-        with open(markdown_path, "r") as f:
-            content = f.read()
+        try:
+            with open(markdown_path, "r") as f:
+                content = f.read()
 
-        # Add citations to the end of the file
-        content += "\n\n## References\n"
-        for i, citation in citations.items():
-            content += f"{i}. [{citation['title']}]({citation['url']})\n"
+            if "## References" not in content:
+                content += "\n\n## References\n"
+                for i, citation in citations.items():
+                    content += f"{i}. [{citation['title']}]({citation['url']})\n"
 
-        with open(markdown_path, "w") as f:
-            f.write(content)
+                with open(markdown_path, "w") as f:
+                    f.write(content)
+            else:
+                logger.info(f"References section already exists in {markdown_path}")
+        except Exception as e:
+            logger.error(f"Error adding citations to markdown: {str(e)}", exc_info=True)
+    else:
+        logger.warning(f"Markdown file not found: {markdown_path}")
 
 
 def set_storm_runner():
@@ -235,49 +196,25 @@ def set_storm_runner():
             "DEMO_WORKING_DIR",
         )
 
-    if not os.path.exists(current_working_dir):
-        os.makedirs(current_working_dir)
+    os.makedirs(current_working_dir, exist_ok=True)
 
-    # Store the function itself in the session state
     st.session_state["run_storm"] = run_storm_with_fallback
-
-    # Convert existing txt files to md
     convert_txt_to_md(current_working_dir)
 
 
 def clear_storm_session():
-    """
-    Clears the STORM-related session state variables.
-    """
     keys_to_clear = ["run_storm", "runner"]
     for key in keys_to_clear:
-        if key in st.session_state:
-            del st.session_state[key]
+        st.session_state.pop(key, None)
 
 
-def get_storm_runner_status():
-    """
-    Returns the current status of the STORM runner.
-    """
+def get_storm_runner_status() -> str:
     if "runner" not in st.session_state:
         return "Not initialized"
-    elif st.session_state["runner"] is None:
-        return "Failed"
-    else:
-        return "Ready"
+    return "Ready" if st.session_state["runner"] else "Failed"
 
 
-def run_storm_step(step: str, topic: str):
-    """
-    Runs a specific step of the STORM process.
-
-    Args:
-    step (str): The step to run ('research', 'outline', 'article', or 'polish')
-    topic (str): The topic to process
-
-    Returns:
-    bool: True if the step was successful, False otherwise
-    """
+def run_storm_step(step: str, topic: str) -> bool:
     if "runner" not in st.session_state or st.session_state["runner"] is None:
         st.error("STORM runner is not initialized. Please set up the runner first.")
         return False
@@ -298,20 +235,12 @@ def run_storm_step(step: str, topic: str):
         runner.run(topic=topic, **step_config[step])
         return True
     except Exception as e:
+        logger.error(f"Error during {step} step: {str(e)}", exc_info=True)
         st.error(f"Error during {step} step: {str(e)}")
         return False
 
 
 def get_storm_output(output_type: str) -> Optional[str]:
-    """
-    Retrieves a specific type of output from the STORM process.
-
-    Args:
-    output_type (str): The type of output to retrieve ('outline', 'article', or 'polished_article')
-
-    Returns:
-    Optional[str]: The requested output if available, None otherwise
-    """
     if "runner" not in st.session_state or st.session_state["runner"] is None:
         st.error("STORM runner is not initialized. Please set up the runner first.")
         return None
@@ -336,5 +265,10 @@ def get_storm_output(output_type: str) -> Optional[str]:
         )
         return None
 
-    with open(output_path, "r", encoding="utf-8") as f:
-        return f.read()
+    try:
+        with open(output_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"Error reading {output_type} file: {str(e)}", exc_info=True)
+        st.error(f"Error reading {output_type} file: {str(e)}")
+        return None

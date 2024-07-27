@@ -13,41 +13,38 @@ load_dotenv()
 # Set page config first
 st.set_page_config(layout="wide")
 
-# Custom CSS to change the progress bar color
-progress_bar_color = """
-<style>
-    .stProgress > div > div > div > div {
-        background-color: #bd93f9;
-    }
-</style>
-"""
-
-# Inject custom CSS
-st.markdown(progress_bar_color, unsafe_allow_html=True)
-
-# Custom CSS to hide the progress bar
-hide_progress_bar = """
-<style>
-    /* Hide the progress bar */
-    .stProgress {
-        display: none !important;
-    }
-    /* Hide the loading spinner */
-    .stSpinner {
-        display: none !important;
-    }
-    /* Hide any other loading indicators */
-    .st-emotion-cache-1dp5vir {
-        display: none !important;
-    }
-</style>
-"""
-
-# Inject custom CSS
-st.markdown(hide_progress_bar, unsafe_allow_html=True)
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 wiki_root_dir = os.path.dirname(os.path.dirname(script_dir))
+
+
+def apply_custom_css():
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #282a36;
+        }
+        .stSidebar {
+            background-color: #44475a;
+        }
+        .stSidebar .stButton > button {
+            background-color: #6272a4;
+            color: #f8f8f2;
+        }
+        .stSidebar .stButton > button:hover {
+            background-color: #bd93f9;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def settings_page():
+    st.title("Settings")
+    st.write("This is the settings page. You can add your settings options here.")
+    # Add your settings options here
 
 
 def main():
@@ -66,46 +63,35 @@ def main():
     if "selected_article_index" not in st.session_state:
         st.session_state["selected_article_index"] = 0
     if "selected_page" not in st.session_state:
-        st.session_state["selected_page"] = 0
+        st.session_state["selected_page"] = "My Articles"
     if st.session_state.get("rerun_requested", False):
         st.session_state["rerun_requested"] = False
         st.rerun()
 
-    st.write(
-        "<style>div.block-container{padding-top:2rem;}</style>",
-        unsafe_allow_html=True)
-    menu_container = st.container()
-    with menu_container:
-        pages = ["My Articles", "Create New Article"]
-        menu_selection = option_menu(
-            None,
-            pages,
-            icons=[
-                "house",
-                "pencil-square"],
-            menu_icon="cast",
-            default_index=0,
-            orientation="horizontal",
-            manual_select=st.session_state.selected_page,
-            styles={
-                "container": {
-                    "padding": "0.2rem 0",
-                    "background-color": "#22222200"},
-            },
-            key="menu_selection",
-        )
+    st.sidebar.title("Storm wiki")
 
-        if st.session_state.get("manual_selection_override", False):
-            menu_selection = pages[st.session_state["selected_page"]]
-            st.session_state["manual_selection_override"] = False
-            st.session_state["selected_page"] = None
+    # Create the navigation
+    selected_page = st.sidebar.radio(
+        "Navigation",
+        ["My Articles", "Create New Article", "Settings"],
+        format_func=lambda x: f"{x} {'📚' if x == 'My Articles' else '✏️' if x == 'Create New Article' else '⚙️'}",
+    )
 
-        if menu_selection == "My Articles":
-            clear_other_page_session_state(page_index=2)
-            MyArticles.my_articles_page()
-        elif menu_selection == "Create New Article":
-            clear_other_page_session_state(page_index=3)
-            CreateNewArticle.create_new_article_page()
+    # Apply custom CSS
+    apply_custom_css()
+
+    # Run the selected page
+    if selected_page == "My Articles":
+        clear_other_page_session_state(page_index=2)
+        MyArticles.my_articles_page()
+    elif selected_page == "Create New Article":
+        clear_other_page_session_state(page_index=3)
+        CreateNewArticle.create_new_article_page()
+    elif selected_page == "Settings":
+        settings_page()
+
+    # Update selected_page in session state
+    st.session_state["selected_page"] = selected_page
 
 
 if __name__ == "__main__":

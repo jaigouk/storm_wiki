@@ -1,34 +1,17 @@
 import logging
 import streamlit as st
-from streamlit_card import card
 from util.file_io import DemoFileIOHelper
 from util.path_utils import get_output_dir
 from util.display_utils import display_article_page
-from pages_util.theme_utils import get_style
-from util.db_utils import load_theme
 from util.ui_helpers import DemoUIHelper
+from util.theme_manager import load_and_apply_theme
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 def my_articles_page():
     try:
-        custom_style = st.session_state.get("custom_style", get_style())
-        st.markdown(custom_style, unsafe_allow_html=True)
-
-        current_theme = st.session_state.get("current_theme", load_theme())
-        page_bg_style = f"""
-        <style>
-        .stApp {{
-            background-color: {current_theme['backgroundColor']};
-        }}
-        [data-testid="stSidebar"] {{
-            background-color: {current_theme['sidebarBackgroundColor']};
-        }}
-        </style>
-        """
-        st.markdown(page_bg_style, unsafe_allow_html=True)
-
+        current_theme = load_and_apply_theme()
         # sync my articles
         if "page2_user_articles_file_path_dict" not in st.session_state:
             local_dir = get_output_dir()

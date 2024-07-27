@@ -1,37 +1,25 @@
 import streamlit as st
-from pages_util.theme_utils import (
+from util.theme_manager import (
     dark_themes,
     light_themes,
     get_theme_css,
     get_preview_html,
     get_contrasting_text_color,
+    load_and_apply_theme,
+    update_theme_and_rerun,
+    load_theme_from_db as load_theme,
 )
-from util.db_utils import save_theme, load_theme
 
 
-def settings_page():
+def settings_page(selected_setting):
+    current_theme = load_and_apply_theme()
     st.title("Settings")
 
-    # Sidebar
-    with st.sidebar:
-        st.title("Settings Section")
-        selected_section = st.radio(
-            "",
-            ["General", "Theme", "Advanced"],
-            format_func=lambda x: f"📊 {x}"
-            if x == "General"
-            else f"🎨 {x}"
-            if x == "Theme"
-            else f"⚙️ {x}",
-            key="settings_section",
-        )
-
-    # Main content
-    if selected_section == "General":
+    if selected_setting == "General":
         st.header("General Settings")
         st.selectbox("Language", ["English", "Spanish", "French"])
 
-    elif selected_section == "Theme":
+    elif selected_setting == "Theme":
         st.header("Theme Settings")
         theme_mode = st.radio("Theme Mode", ["Light", "Dark"])
 
@@ -67,58 +55,15 @@ def settings_page():
                         index=["sans serif", "serif", "monospace"].index(value),
                     )
 
-            # Determine text color based on background
-            custom_theme["textColor"] = get_contrasting_text_color(
-                custom_theme["backgroundColor"]
-            )
-
         with col2:
             st.markdown(get_preview_html(custom_theme), unsafe_allow_html=True)
 
         if st.button("Apply Theme"):
-            save_theme(custom_theme)
-            st.session_state.current_theme = custom_theme
-            st.session_state.custom_style = get_theme_css(custom_theme)
-            st.success("Theme applied successfully!")
-            st.experimental_rerun()
+            update_theme_and_rerun(custom_theme)
 
-    elif selected_section == "Advanced":
+    elif selected_setting == "Advanced":
         st.header("Advanced Settings")
         st.slider("Font size", min_value=8, max_value=24, value=16)
 
     # Apply the current theme
-    current_theme = st.session_state.get("current_theme", load_theme())
     st.markdown(get_theme_css(current_theme), unsafe_allow_html=True)
-
-    # Apply background and text color
-    page_bg_style = f"""
-    <style>
-    .stApp {{
-        background-color: {current_theme['backgroundColor']};
-        color: {current_theme['textColor']};
-    }}
-    [data-testid="stSidebar"] {{
-        background-color: {current_theme['sidebarBackgroundColor']};
-        color: {get_contrasting_text_color(current_theme['sidebarBackgroundColor'])};
-    }}
-    .stButton > button {{
-        color: {get_contrasting_text_color(current_theme['primaryColor'])};
-        background-color: {current_theme['primaryColor']};
-    }}
-    .stTextInput > div > div > input {{
-        color: {current_theme['textColor']};
-    }}
-    .stSelectbox > div > div > select {{
-        background-color: {current_theme['secondaryBackgroundColor']};
-        color: {current_theme['textColor']};
-    }}
-    h1, h2, h3, h4, h5, h6, p, li, a {{
-        color: {current_theme['textColor']} !important;
-    }}
-    .stMarkdown {{
-        color: {current_theme['textColor']};
-    }}
-    </style>
-    """
-
-    st.markdown(page_bg_style, unsafe_allow_html=True)

@@ -3,7 +3,7 @@ from .file_io import DemoFileIOHelper
 from .text_processing import DemoTextProcessingHelper
 from .ui_helpers import DemoUIHelper
 from stoc import stoc
-from util.db_utils import load_theme
+from util.theme_manager import load_and_apply_theme
 
 
 def display_article_page(
@@ -15,7 +15,7 @@ def display_article_page(
     show_qa_panel=False,
 ):
     try:
-        current_theme = st.session_state.get("current_theme", load_theme())
+        current_theme = st.session_state.current_theme
         if show_title:
             st.markdown(
                 f"<h2 style='text-align: center; color: {current_theme['textColor']};'>{selected_article_name.replace('_', ' ')}</h2>",
@@ -37,12 +37,22 @@ def display_article_page(
         st.exception(e)
 
 
-
 def display_main_article(article_data, show_feedback_form=False, show_qa_panel=False):
     try:
+        current_theme = st.session_state.current_theme
         with st.container(height=1000, border=True):
             table_content_sidebar = st.sidebar.expander(
                 "**Table of contents**", expanded=True
+            )
+            st.markdown(
+                f"""
+                <style>
+                [data-testid="stExpander"] {{
+                    border-color: {current_theme['primaryColor']} !important;
+                }}
+                </style>
+                """,
+                unsafe_allow_html=True,
             )
             display_main_article_text(
                 article_text=article_data.get("article", ""),

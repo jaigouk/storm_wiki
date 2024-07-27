@@ -2,35 +2,29 @@ import streamlit as st
 from .text_processing import DemoTextProcessingHelper
 from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
 import markdown
-from util.db_utils import load_theme
 import streamlit as st
 from streamlit_card import card
 import os
 from .file_io import DemoFileIOHelper
+from util.theme_manager import get_contrasting_text_color
 
 
 class DemoUIHelper:
     @staticmethod
-    def st_markdown_adjust_size(content, font_size=20):
-        current_theme = st.session_state.get("current_theme", load_theme())
-        st.markdown(
-            f"""
-        <span style='font-size: {font_size}px; color: {current_theme['textColor']};'>{content}</span>
-        """,
-            unsafe_allow_html=True,
-        )
-
-    @staticmethod
     def get_article_card_style(current_theme):
+        contrast_color = get_contrasting_text_color(
+            current_theme["secondaryBackgroundColor"]
+        )
         return {
             "card": {
                 "width": "100%",
                 "height": "116px",
                 "padding": "10px",
                 "border-radius": "5px",
-                "box-shadow": "0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15)",
+                "box-shadow": f"0 4px 6px 0 {current_theme['primaryColor']}33",
                 "margin": "0px",
                 "background-color": current_theme["secondaryBackgroundColor"],
+                "border": f"1px solid {current_theme['primaryColor']}",
             },
             "text": {
                 "font-size": "16px",
@@ -41,13 +35,17 @@ class DemoUIHelper:
                 "overflow": "hidden",
                 "text-overflow": "ellipsis",
                 "padding": "5px",
-                "color": current_theme["textColor"],
+                "color": contrast_color,
             },
         }
 
     @staticmethod
     def create_article_card(article_name, current_theme):
         cleaned_article_title = article_name.replace("_", " ")
+        card_style = DemoUIHelper.get_article_card_style(current_theme)
+        card_style["card"]["border"] = (
+            f"1px solid {get_contrasting_text_color(current_theme['secondaryBackgroundColor'])}"
+        )
         return card(
             title="",
             text=cleaned_article_title,
@@ -56,7 +54,7 @@ class DemoUIHelper:
                     os.path.dirname(os.path.dirname(__file__)), "assets", "void.jpg"
                 )
             ),
-            styles=DemoUIHelper.get_article_card_style(current_theme),
+            styles=card_style,
         )
 
     @staticmethod

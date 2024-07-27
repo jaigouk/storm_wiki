@@ -6,11 +6,8 @@ from util.file_io import DemoFileIOHelper
 from util.display_utils import display_article_page
 from util.text_processing import convert_txt_to_md
 from util.path_utils import get_output_dir
-from util.storm_runner import set_storm_runner
 from util.storm_runner import set_storm_runner, process_search_results
-from pages_util.theme_utils import (
-    get_style,
-)
+from util.theme_manager import load_and_apply_theme
 
 
 def sanitize_title(title):
@@ -27,8 +24,7 @@ def add_date_to_file(file_path):
 
 
 def create_new_article_page():
-    custom_style = st.session_state.get("custom_style", get_style())
-    st.markdown(custom_style, unsafe_allow_html=True)
+    current_theme = load_and_apply_theme()
 
     if "page3_write_article_state" not in st.session_state:
         st.session_state["page3_write_article_state"] = "not started"

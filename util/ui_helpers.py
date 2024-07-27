@@ -2,53 +2,62 @@ import streamlit as st
 from .text_processing import DemoTextProcessingHelper
 from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
 import markdown
+from util.db_utils import load_theme
+import streamlit as st
+from streamlit_card import card
+import os
+from .file_io import DemoFileIOHelper
 
 
 class DemoUIHelper:
+    @staticmethod
     def st_markdown_adjust_size(content, font_size=20):
+        current_theme = st.session_state.get("current_theme", load_theme())
         st.markdown(
             f"""
-        <span style='font-size: {font_size}px;'>{content}</span>
+        <span style='font-size: {font_size}px; color: {current_theme['textColor']};'>{content}</span>
         """,
             unsafe_allow_html=True,
         )
 
     @staticmethod
-    def get_article_card_UI_style(boarder_color="#9AD8E1"):
+    def get_article_card_style(current_theme):
         return {
             "card": {
                 "width": "100%",
                 "height": "116px",
-                "max-width": "640px",
-                "background-color": "#FFFFF",
-                "border": "1px solid #CCC",
-                "padding": "20px",
+                "padding": "10px",
                 "border-radius": "5px",
-                "border-left": f"0.5rem solid {boarder_color}",
                 "box-shadow": "0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15)",
                 "margin": "0px",
-            },
-            "title": {
-                "white-space": "nowrap",
-                "overflow": "hidden",
-                "text-overflow": "ellipsis",
-                "font-size": "17px",
-                "color": "rgb(49, 51, 63)",
-                "text-align": "left",
-                "width": "95%",
-                "font-weight": "normal",
+                "background-color": current_theme["secondaryBackgroundColor"],
             },
             "text": {
-                "white-space": "nowrap",
+                "font-size": "16px",
+                "line-height": "1.2",
+                "display": "-webkit-box",
+                "-webkit-line-clamp": "4",
+                "-webkit-box-orient": "vertical",
                 "overflow": "hidden",
                 "text-overflow": "ellipsis",
-                "font-size": "25px",
-                "color": "rgb(49, 51, 63)",
-                "text-align": "left",
-                "width": "95%",
+                "padding": "5px",
+                "color": current_theme["textColor"],
             },
-            "filter": {"background-color": "rgba(0, 0, 0, 0)"},
         }
+
+    @staticmethod
+    def create_article_card(article_name, current_theme):
+        cleaned_article_title = article_name.replace("_", " ")
+        return card(
+            title="",
+            text=cleaned_article_title,
+            image=DemoFileIOHelper.read_image_as_base64(
+                os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)), "assets", "void.jpg"
+                )
+            ),
+            styles=DemoUIHelper.get_article_card_style(current_theme),
+        )
 
     @staticmethod
     def customize_toast_css_style():

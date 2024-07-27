@@ -1,62 +1,33 @@
-import os
 import logging
 import streamlit as st
 from streamlit_card import card
 from util.file_io import DemoFileIOHelper
-from pages_util.style import get_style, default_style
-
-# from util.ui_helpers import DemoUIHelper
 from util.path_utils import get_output_dir
 from util.display_utils import display_article_page
+from pages_util.theme_utils import get_style
+from util.db_utils import load_theme
+from util.ui_helpers import DemoUIHelper
 
 logging.basicConfig(level=logging.DEBUG)
-
-
-def article_card_setup(column_to_add, article_name):
-    with column_to_add:
-        cleaned_article_title = article_name.replace("_", " ")
-        hasClicked = card(
-            title="",
-            text=cleaned_article_title,
-            image=DemoFileIOHelper.read_image_as_base64(
-                os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)), "assets", "void.jpg"
-                )
-            ),
-            styles={
-                "card": {
-                    "width": "100%",
-                    "height": "116px",
-                    "background-color": "#44475a",
-                    "border": "none",
-                    "padding": "10px",
-                    "border-radius": "5px",
-                    "box-shadow": "0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15)",
-                    "margin": "0px",
-                    "border-left": "0.5rem solid #bd93f9",
-                },
-                "text": {
-                    "color": "#f8f8f2",
-                    "font-size": "16px",
-                    "line-height": "1.2",
-                    "display": "-webkit-box",
-                    "-webkit-line-clamp": "4",
-                    "-webkit-box-orient": "vertical",
-                    "overflow": "hidden",
-                    "text-overflow": "ellipsis",
-                    "padding": "5px",
-                },
-            },
-        )
-        if hasClicked:
-            st.session_state["page2_selected_my_article"] = article_name
-            st.rerun()
 
 
 def my_articles_page():
     try:
         custom_style = st.session_state.get("custom_style", get_style())
         st.markdown(custom_style, unsafe_allow_html=True)
+
+        current_theme = st.session_state.get("current_theme", load_theme())
+        page_bg_style = f"""
+        <style>
+        .stApp {{
+            background-color: {current_theme['backgroundColor']};
+        }}
+        [data-testid="stSidebar"] {{
+            background-color: {current_theme['sidebarBackgroundColor']};
+        }}
+        </style>
+        """
+        st.markdown(page_bg_style, unsafe_allow_html=True)
 
         # sync my articles
         if "page2_user_articles_file_path_dict" not in st.session_state:
@@ -93,48 +64,19 @@ def my_articles_page():
                         article_names[start_index:end_index]
                     ):
                         column_to_add = my_article_columns[i % 3]
-                        article_card_setup(
-                            column_to_add=column_to_add,
-                            article_name=article_name,
-                        )
+                        with column_to_add:
+                            if DemoUIHelper.create_article_card(
+                                article_name, current_theme
+                            ):
+                                st.session_state["page2_selected_my_article"] = (
+                                    article_name
+                                )
+                                st.rerun()
             else:
                 with my_article_columns[0]:
-                    hasClicked = card(
-                        title="",
-                        text="Start your first research!",
-                        image=DemoFileIOHelper.read_image_as_base64(
-                            os.path.join(
-                                os.path.dirname(os.path.dirname(__file__)),
-                                "assets",
-                                "void.jpg",
-                            )
-                        ),
-                        styles={
-                            "card": {
-                                "width": "100%",
-                                "height": "116px",
-                                "background-color": "#44475a",
-                                "border": "none",
-                                "padding": "10px",
-                                "border-radius": "5px",
-                                "box-shadow": "0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15)",
-                                "margin": "0px",
-                                "border-left": "0.5rem solid #bd93f9",
-                            },
-                            "text": {
-                                "color": "#f8f8f2",
-                                "font-size": "16px",
-                                "line-height": "1.2",
-                                "display": "-webkit-box",
-                                "-webkit-line-clamp": "4",
-                                "-webkit-box-orient": "vertical",
-                                "overflow": "hidden",
-                                "text-overflow": "ellipsis",
-                                "padding": "5px",
-                            },
-                        },
-                    )
-                    if hasClicked:
+                    if DemoUIHelper.create_article_card(
+                        "Start your first research!", current_theme
+                    ):
                         st.session_state.selected_page = 1
                         st.session_state["manual_selection_override"] = True
                         st.session_state["rerun_requested"] = True

@@ -8,7 +8,9 @@ from util.text_processing import convert_txt_to_md
 from util.path_utils import get_output_dir
 from util.storm_runner import set_storm_runner
 from util.storm_runner import set_storm_runner, process_search_results
-from pages_util.style import get_style, default_style
+from pages_util.theme_utils import (
+    get_style,
+)
 
 
 def sanitize_title(title):

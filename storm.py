@@ -3,12 +3,14 @@ import os
 from dotenv import load_dotenv
 
 from util.phoenix_setup import setup_phoenix
-from pages_util import MyArticles, CreateNewArticle, Settings
-from streamlit_float import *
+from pages_util.MyArticles import my_articles_page
+from pages_util.CreateNewArticle import create_new_article_page
+from pages_util.Settings import settings_page
 from streamlit_option_menu import option_menu
 from util.session_state import clear_other_page_session_state
-from pages_util.theme_utils import dracula_soft_dark, get_theme_css
-from pages_util.style import get_style, default_style
+from pages_util.theme_utils import get_theme_css, get_contrasting_text_color
+from util.db_utils import init_db, load_theme
+from streamlit.components.v1 import html
 
 load_dotenv()
 
@@ -29,6 +31,7 @@ wiki_root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 def main():
     setup_phoenix()
+    init_db()  # Initialize the database
 
     if "first_run" not in st.session_state:
         st.session_state["first_run"] = True
@@ -48,31 +51,92 @@ def main():
         st.session_state["rerun_requested"] = False
         st.rerun()
 
-    if "current_theme" not in st.session_state:
-        st.session_state.current_theme = dracula_soft_dark
+    # Load theme from database
+    current_theme = load_theme()
+    st.session_state.current_theme = current_theme
+    st.session_state.custom_style = get_theme_css(current_theme)
 
-    st.session_state.custom_style = get_theme_css(dracula_soft_dark)
     # Apply custom CSS
     st.markdown(st.session_state.custom_style, unsafe_allow_html=True)
 
-    st.sidebar.title("Storm wiki")
+    # Apply background and text color
+    page_bg_style = f"""
+    <style>
+    .stApp {{
+        background-color: {current_theme['backgroundColor']};
+        color: {current_theme['textColor']};
+    }}
+    [data-testid="stSidebar"] {{
+        background-color: {current_theme['sidebarBackgroundColor']};
+        color: {get_contrasting_text_color(current_theme['sidebarBackgroundColor'])};
+    }}
+    .stSelectbox > div > div > select {{
+        background-color: {current_theme['secondaryBackgroundColor']};
+        color: {current_theme['textColor']};
+    }}
+    h1, h2, h3, h4, h5, h6, p, li, a {{
+        color: {current_theme['textColor']} !important;
+    }}
+    .stMarkdown {{
+        color: {current_theme['textColor']};
+    }}
+    </style>
+    """
 
-    # Create the navigation
-    selected_page = st.sidebar.radio(
-        "Navigation",
-        ["My Articles", "Create New Article", "Settings"],
-        format_func=lambda x: f"{x} {'📚' if x == 'My Articles' else '✏️' if x == 'Create New Article' else '⚙️'}",
-    )
+    st.markdown(page_bg_style, unsafe_allow_html=True)
 
+    with st.sidebar:
+        st.title("Storm wiki")
+        sidebar_style = f"""
+        <style>
+        [data-testid="stSidebar"] {{
+            background-color: {current_theme['sidebarBackgroundColor']};
+        }}
+        </style>
+        """
+        st.markdown(sidebar_style, unsafe_allow_html=True)
+        selected_page = option_menu(
+            menu_title=None,
+            options=["My Articles", "Create New Article", "Settings"],
+            icons=["book", "pencil-square", "gear"],
+            menu_icon="cast",
+            default_index=0,
+            styles={
+                "container": {
+                    "padding": "0!important",
+                    "background-color": current_theme["sidebarBackgroundColor"],
+                },
+                "icon": {
+                    "color": get_contrasting_text_color(
+                        current_theme["sidebarBackgroundColor"]
+                    ),
+                    "font-size": "25px",
+                },
+                "nav-link": {
+                    "color": get_contrasting_text_color(
+                        current_theme["sidebarBackgroundColor"]
+                    ),
+                    "font-size": "16px",
+                    "text-align": "left",
+                    "margin": "0px",
+                    "--hover-color": current_theme["primaryColor"],
+                    "background-color": "transparent",
+                },
+                "nav-link-selected": {
+                    "background-color": current_theme["primaryColor"],
+                    "color": get_contrasting_text_color(current_theme["primaryColor"]),
+                },
+            },
+        )
     # Run the selected page
     if selected_page == "My Articles":
         clear_other_page_session_state(page_index=2)
-        MyArticles.my_articles_page()
+        my_articles_page()
     elif selected_page == "Create New Article":
         clear_other_page_session_state(page_index=3)
-        CreateNewArticle.create_new_article_page()
+        create_new_article_page()
     elif selected_page == "Settings":
-        Settings.settings_page()
+        settings_page()
 
     # Update selected_page in session state
     st.session_state["selected_page"] = selected_page

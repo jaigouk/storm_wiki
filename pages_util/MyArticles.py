@@ -2,8 +2,7 @@ import logging
 import streamlit as st
 from util.file_io import DemoFileIOHelper
 from util.path_utils import get_output_dir
-from util.display_utils import display_article_page
-from util.ui_helpers import DemoUIHelper
+from util.ui_components import UIComponents
 from util.theme_manager import load_and_apply_theme
 
 logging.basicConfig(level=logging.DEBUG)
@@ -48,7 +47,7 @@ def my_articles_page():
                     ):
                         column_to_add = my_article_columns[i % 3]
                         with column_to_add:
-                            if DemoUIHelper.create_article_card(
+                            if UIComponents.create_article_card(
                                 article_name, current_theme
                             ):
                                 st.session_state["page2_selected_my_article"] = (
@@ -57,7 +56,7 @@ def my_articles_page():
                                 st.rerun()
             else:
                 with my_article_columns[0]:
-                    if DemoUIHelper.create_article_card(
+                    if UIComponents.create_article_card(
                         "Start your first research!", current_theme
                     ):
                         st.session_state.selected_page = 1
@@ -73,7 +72,7 @@ def my_articles_page():
             logging.debug(f"Displaying article: {selected_article_name}")
             logging.debug(f"File path dict: {selected_article_file_path_dict}")
 
-            display_article_page(
+            UIComponents.display_article_page(
                 selected_article_name=selected_article_name,
                 selected_article_file_path_dict=selected_article_file_path_dict,
                 show_title=True,

@@ -1,9 +1,8 @@
 import os
 from datetime import datetime
 import streamlit as st
-from util.ui_helpers import DemoUIHelper, StreamlitCallbackHandler
+from util.ui_components import UIComponents, StreamlitCallbackHandler
 from util.file_io import DemoFileIOHelper
-from util.display_utils import display_article_page
 from util.text_processing import convert_txt_to_md
 from util.path_utils import get_output_dir
 from util.storm_runner import set_storm_runner, process_search_results
@@ -115,7 +114,7 @@ def create_new_article_page():
                         "conversation_log.json",
                     )
                     if os.path.exists(conversation_log_path):
-                        DemoUIHelper.display_persona_conversations(
+                        UIComponents.display_persona_conversations(
                             DemoFileIOHelper.read_json_file(conversation_log_path)
                         )
                     st.session_state["page3_write_article_state"] = "final_writing"
@@ -222,7 +221,7 @@ def create_new_article_page():
             )
             st.error(f"Directory structure: {current_working_dir_paths}")
         else:
-            display_article_page(
+            UIComponents.display_article_page(
                 selected_article_name=st.session_state["page3_topic_name_cleaned"],
                 selected_article_file_path_dict=current_article_file_path_dict,
                 show_title=True,

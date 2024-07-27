@@ -6,9 +6,9 @@ dracula_soft_dark = {
     "primaryColor": "#bf96f9",
     "backgroundColor": "#282a36",
     "secondaryBackgroundColor": "#44475a",
-    "textColor": "#f8f8f2",
+    "textColor": "#C0C0D0",
     "sidebarBackgroundColor": "#444759",
-    "sidebarTextColor": "#6272a4",
+    "sidebarTextColor": "#C0C0D0",
     "font": "sans serif",
 }
 
@@ -69,9 +69,9 @@ dark_themes = {
 }
 
 light_themes = {
-    "GitHub Light": github_light,
     "Solarized Light": solarized_light,
     "Nord Light": nord_light,
+    "GitHub Light": github_light,
 }
 
 
@@ -142,6 +142,7 @@ def get_option_menu_style(theme):
 
 def get_theme_css(theme):
     contrasting_text_color = get_contrasting_text_color(theme["primaryColor"])
+    contrasting_bg_color = get_contrasting_text_color(theme["backgroundColor"])
     return f"""
     <style>
     :root {{

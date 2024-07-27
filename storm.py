@@ -3,10 +3,12 @@ import os
 from dotenv import load_dotenv
 
 from util.phoenix_setup import setup_phoenix
-from pages_util import MyArticles, CreateNewArticle
+from pages_util import MyArticles, CreateNewArticle, Settings
 from streamlit_float import *
 from streamlit_option_menu import option_menu
 from util.session_state import clear_other_page_session_state
+from pages_util.theme_utils import dracula_soft_dark, get_theme_css
+from pages_util.style import get_style, default_style
 
 load_dotenv()
 
@@ -14,37 +16,15 @@ load_dotenv()
 st.set_page_config(layout="wide")
 
 
+hide_decoration_bar_style = """
+    <style>
+        header {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 wiki_root_dir = os.path.dirname(os.path.dirname(script_dir))
-
-
-def apply_custom_css():
-    st.markdown(
-        """
-        <style>
-        .stApp {
-            background-color: #282a36;
-        }
-        .stSidebar {
-            background-color: #44475a;
-        }
-        .stSidebar .stButton > button {
-            background-color: #6272a4;
-            color: #f8f8f2;
-        }
-        .stSidebar .stButton > button:hover {
-            background-color: #bd93f9;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def settings_page():
-    st.title("Settings")
-    st.write("This is the settings page. You can add your settings options here.")
-    # Add your settings options here
 
 
 def main():
@@ -68,6 +48,13 @@ def main():
         st.session_state["rerun_requested"] = False
         st.rerun()
 
+    if "current_theme" not in st.session_state:
+        st.session_state.current_theme = dracula_soft_dark
+
+    st.session_state.custom_style = get_theme_css(dracula_soft_dark)
+    # Apply custom CSS
+    st.markdown(st.session_state.custom_style, unsafe_allow_html=True)
+
     st.sidebar.title("Storm wiki")
 
     # Create the navigation
@@ -77,9 +64,6 @@ def main():
         format_func=lambda x: f"{x} {'📚' if x == 'My Articles' else '✏️' if x == 'Create New Article' else '⚙️'}",
     )
 
-    # Apply custom CSS
-    apply_custom_css()
-
     # Run the selected page
     if selected_page == "My Articles":
         clear_other_page_session_state(page_index=2)
@@ -88,7 +72,7 @@ def main():
         clear_other_page_session_state(page_index=3)
         CreateNewArticle.create_new_article_page()
     elif selected_page == "Settings":
-        settings_page()
+        Settings.settings_page()
 
     # Update selected_page in session state
     st.session_state["selected_page"] = selected_page

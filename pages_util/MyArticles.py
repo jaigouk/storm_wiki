@@ -3,45 +3,13 @@ import logging
 import streamlit as st
 from streamlit_card import card
 from util.file_io import DemoFileIOHelper
+from pages_util.style import get_style, default_style
 
 # from util.ui_helpers import DemoUIHelper
 from util.path_utils import get_output_dir
 from util.display_utils import display_article_page
 
 logging.basicConfig(level=logging.DEBUG)
-
-
-def apply_custom_css():
-    st.markdown(
-        """
-    <style>
-    /* Remove top line */
-    header {
-        background: none !important;
-    }
-
-    /* Adjust other elements */
-    .stApp {
-        background-color: #282a36 !important;
-    }
-    .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea,
-    .stSelectbox > div > div {
-        background-color: #44475a !important;
-        color: #f8f8f2 !important;
-        border: 1px solid #6272a4 !important;
-    }
-    .stButton > button {
-        background-color: #6272a4 !important;
-        color: #f8f8f2 !important;
-    }
-    .stButton > button:hover {
-        background-color: #bd93f9 !important;
-    }
-    </style>
-    """,
-        unsafe_allow_html=True,
-    )
 
 
 def article_card_setup(column_to_add, article_name):
@@ -87,7 +55,8 @@ def article_card_setup(column_to_add, article_name):
 
 def my_articles_page():
     try:
-        apply_custom_css()
+        custom_style = st.session_state.get("custom_style", get_style())
+        st.markdown(custom_style, unsafe_allow_html=True)
 
         # sync my articles
         if "page2_user_articles_file_path_dict" not in st.session_state:

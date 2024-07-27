@@ -8,56 +8,7 @@ from util.text_processing import convert_txt_to_md
 from util.path_utils import get_output_dir
 from util.storm_runner import set_storm_runner
 from util.storm_runner import set_storm_runner, process_search_results
-
-
-def apply_custom_css():
-    st.markdown(
-        """
-    <style>
-    /* Remove top line */
-    header {
-        background: none !important;
-    }
-
-    /* Adjust card styling */
-    .stTileButton {
-        background-color: #44475a !important;
-        color: #f8f8f2 !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
-
-    /* Remove green line on cards */
-    .stTileButton::before {
-        display: none !important;
-    }
-
-    /* Adjust other elements */
-    .stApp {
-        background-color: #282a36;
-    }
-    .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea {
-        background-color: #44475a;
-        color: #f8f8f2;
-        border: 1px solid #6272a4;
-    }
-    .stButton > button {
-        background-color: #6272a4;
-        color: #f8f8f2;
-    }
-    .stButton > button:hover {
-        background-color: #bd93f9;
-    }
-    /* Adjust dropdown menu */
-    .stSelectbox > div > div {
-        background-color: #44475a;
-        color: #f8f8f2;
-    }
-    </style>
-    """,
-        unsafe_allow_html=True,
-    )
+from pages_util.style import get_style, default_style
 
 
 def sanitize_title(title):
@@ -74,7 +25,8 @@ def add_date_to_file(file_path):
 
 
 def create_new_article_page():
-    apply_custom_css()
+    custom_style = st.session_state.get("custom_style", get_style())
+    st.markdown(custom_style, unsafe_allow_html=True)
 
     if "page3_write_article_state" not in st.session_state:
         st.session_state["page3_write_article_state"] = "not started"

@@ -169,19 +169,21 @@ def get_theme_css(theme):
 
     /* Text and headers */
     .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, p, li {{
-        color: var(--text-color);
+        color: var(--text-color) !important;
     }}
 
     /* Buttons */
-    .stButton > button {{
-        color: var(--background-color);
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
+    .stButton > button,
+    .stButton > button:hover,
+    button[kind="secondaryFormSubmit"],
+    button[kind="secondaryFormSubmit"]:hover {{
+        background-color: var(--primary-color) !important;
+        color: var(--background-color) !important;
+        border-color: var(--primary-color) !important;
     }}
-    .stButton > button:hover {{
-        color: var(--background-color);
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
+    .stButton > button > div > p,
+    button[kind="secondaryFormSubmit"] > div > p {{
+        color: var(--background-color) !important;
     }}
 
     /* Inputs */
@@ -197,6 +199,21 @@ def get_theme_css(theme):
     .stTextArea textarea:focus {{
         border-color: var(--primary-color) !important;
         box-shadow: 0 0 0 1px var(--primary-color) !important;
+    }}
+
+    /* Placeholder text color */
+    .stTextInput > div > div > input::placeholder,
+    .stNumberInput > div > div > input::placeholder,
+    .stTextArea textarea::placeholder {{
+        color: var(--text-color) !important;
+        opacity: 0.6;
+    }}
+
+    /* Specific styling for number input */
+    [data-testid="stNumberInput"] input {{
+        background-color: var(--secondary-background-color) !important;
+        color: var(--text-color) !important;
+        border-color: var(--primary-color) !important;
     }}
 
     /* Dropdowns */
@@ -217,6 +234,21 @@ def get_theme_css(theme):
     .stSelectbox [data-baseweb="select"] [role="option"]:hover {{
         background-color: var(--primary-color) !important;
         color: var(--background-color) !important;
+    }}
+
+    /* Dropdown menu items */
+    .st-emotion-cache-1ppb27g,
+    .st-emotion-cache-crpzz5 {{
+        background-color: var(--secondary-background-color) !important;
+        color: var(--text-color) !important;
+    }}
+    .st-emotion-cache-1ppb27g:hover,
+    .st-emotion-cache-crpzz5:hover {{
+        background-color: var(--primary-color) !important;
+        color: var(--background-color) !important;
+    }}
+    .st-emotion-cache-sy3zga {{
+        color: var(--text-color) !important;
     }}
 
     /* Number input step buttons */
@@ -240,16 +272,6 @@ def get_theme_css(theme):
     /* Sliders */
     .stSlider > div > div > div > div {{
         background-color: var(--primary-color);
-    }}
-
-    /* Dataframes */
-    .stDataFrame {{
-        background-color: var(--secondary-background-color);
-    }}
-
-    /* Tooltips */
-    .stTooltipIcon {{
-        color: var(--text-color);
     }}
     </style>
     """

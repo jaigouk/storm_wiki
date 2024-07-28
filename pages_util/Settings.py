@@ -189,5 +189,6 @@ def settings_page(selected_setting):
         if st.button("Save Ollama Settings"):
             save_ollama_settings(model, url, port, max_tokens)
             st.success("Ollama settings saved successfully!")
+
     # Apply the current theme
     st.markdown(get_theme_css(current_theme), unsafe_allow_html=True)

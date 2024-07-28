@@ -4,6 +4,9 @@ import json
 import streamlit as st
 from typing import Optional, Dict, Any
 import logging
+import sqlite3
+import json
+import subprocess
 from dspy import Example
 
 from knowledge_storm import (
@@ -14,6 +17,11 @@ from knowledge_storm import (
 from knowledge_storm.lm import OpenAIModel, OllamaClient
 from .search import CombinedSearchAPI
 from .artifact_helpers import convert_txt_to_md
+from pages_util.Settings import (
+    load_ollama_settings,
+    save_ollama_settings,
+    load_search_options,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

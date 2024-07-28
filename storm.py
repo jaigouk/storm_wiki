@@ -73,7 +73,7 @@ def main():
         if menu_selection == "Settings":
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown("### Settings Section")
-            settings_options = ["General", "Theme", "Advanced"]
+            settings_options = ["Search", "Theme", "Ollama"]
             selected_setting = option_menu(
                 menu_title=None,
                 options=settings_options,

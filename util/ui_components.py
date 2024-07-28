@@ -221,27 +221,26 @@ class UIComponents:
             elif line.startswith("#"):
                 toc_items.append(("h1", line[1:]))
 
-        # customize markdown font size
-        custom_css = """
+        # Apply custom CSS
+        current_theme = st.session_state.current_theme
+        custom_css = f"""
         <style>
-            /* Adjust the font size for headings */
-            h1 { font-size: 28px; }
-            h2 { font-size: 24px; }
-            h3 { font-size: 22px; }
-            h4 { font-size: 20px; }
-            h5 { font-size: 18px; }
-            /* Adjust the font size for normal text */
-            p { font-size: 18px; }
+            h1 {{ font-size: 28px; color: {current_theme['textColor']}; }}
+            h2 {{ font-size: 24px; color: {current_theme['textColor']}; }}
+            h3 {{ font-size: 22px; color: {current_theme['textColor']}; }}
+            h4 {{ font-size: 20px; color: {current_theme['textColor']}; }}
+            h5 {{ font-size: 18px; color: {current_theme['textColor']}; }}
+            p {{ font-size: 18px; color: {current_theme['textColor']}; }}
+            a.toc {{ color: {current_theme['textColor']}; text-decoration: none; }}
         </style>
         """
         st.markdown(custom_css, unsafe_allow_html=True)
 
-        st.write(text)
+        st.markdown(text, unsafe_allow_html=True)
         UIComponents.toc(toc_items, expander)
 
     @staticmethod
     def toc(toc_items, expander):
-        st.write(UIComponents.DISABLE_LINK_CSS, unsafe_allow_html=True)
         if expander is None:
             expander = st.sidebar.expander("**Table of contents**", expanded=True)
         with expander:
@@ -254,7 +253,7 @@ class UIComponents:
                         + "- "
                         + f'<a href="#{UIComponents.normalize(title)}" class="toc"> {title}</a> \n'
                     )
-                st.write(markdown_toc, unsafe_allow_html=True)
+                st.markdown(markdown_toc, unsafe_allow_html=True)
 
     @staticmethod
     def normalize(s):
@@ -267,14 +266,6 @@ class UIComponents:
             "".join([char if char.isalnum() else "-" for char in s]).strip("-").lower()
         )
         return normalized
-
-    DISABLE_LINK_CSS = """
-    <style>
-    a.toc {
-        color: inherit;
-        text-decoration: none; /* no underline */
-    }
-    </style>"""
 
 
 class StreamlitCallbackHandler(BaseCallbackHandler):

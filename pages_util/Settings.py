@@ -7,18 +7,123 @@ from util.theme_manager import (
     get_contrasting_text_color,
     load_and_apply_theme,
     update_theme_and_rerun,
+    save_theme,
     load_theme_from_db as load_theme,
 )
+import sqlite3
+import json
+import subprocess
+
+
+def save_search_options(search_top_k, retrieve_top_k):
+    conn = sqlite3.connect("settings.db")
+    c = conn.cursor()
+    c.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+        (
+            "search_options",
+            json.dumps(
+                {"search_top_k": search_top_k, "retrieve_top_k": retrieve_top_k}
+            ),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+# Function to load search options
+def load_search_options():
+    conn = sqlite3.connect("settings.db")
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key='search_options'")
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        return json.loads(result[0])
+    return {"search_top_k": 20, "retrieve_top_k": 20}
+
+
+def save_ollama_settings(model, url, port, max_tokens):
+    conn = sqlite3.connect("settings.db")
+    c = conn.cursor()
+    c.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+        (
+            "ollama_settings",
+            json.dumps(
+                {"model": model, "url": url, "port": port, "max_tokens": max_tokens}
+            ),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def list_downloaded_models():
+    try:
+        # Execute the 'ollama list' command
+        output = subprocess.check_output(["ollama", "list"], stderr=subprocess.STDOUT)
+        # Decode the output and extract the model names
+        models_list = []
+        for line in output.decode("utf-8").splitlines():
+            model_name = line.split()[0]  # Extract the first part of the line
+            models_list.append(model_name)
+        return models_list
+    except Exception as e:
+        print(f"Error executing command: {e}")
+        return []
+
+
+def load_ollama_settings():
+    conn = sqlite3.connect("settings.db")
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key='ollama_settings'")
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        settings = json.loads(result[0])
+    else:
+        settings = {
+            "model": "jaigouk/hermes-2-theta-llama-3:latest",
+            "url": "http://localhost",
+            "port": 11434,
+            "max_tokens": 2000,
+        }
+
+    # Fetch the list of downloaded models
+    models_list = list_downloaded_models()
+    if settings["model"] not in models_list:
+        models_list.insert(
+            0, settings["model"]
+        )  # Ensure the current model is in the list
+
+    return settings, models_list
 
 
 def settings_page(selected_setting):
     current_theme = load_and_apply_theme()
     st.title("Settings")
 
-    if selected_setting == "General":
-        st.header("General Settings")
-        st.selectbox("Language", ["English", "Spanish", "French"])
-
+    if selected_setting == "Search":
+        st.header("Search Options Settings")
+        search_options = load_search_options()
+        search_top_k = st.number_input(
+            "Search Top K",
+            min_value=1,
+            max_value=100,
+            value=search_options["search_top_k"],
+        )
+        retrieve_top_k = st.number_input(
+            "Retrieve Top K",
+            min_value=1,
+            max_value=100,
+            value=search_options["retrieve_top_k"],
+        )
+        if st.button("Save Search Options"):
+            save_search_options(search_top_k, retrieve_top_k)
+            st.success("Search options saved successfully!")
     elif selected_setting == "Theme":
         st.header("Theme Settings")
         theme_mode = st.radio("Theme Mode", ["Light", "Dark"])
@@ -59,11 +164,30 @@ def settings_page(selected_setting):
             st.markdown(get_preview_html(custom_theme), unsafe_allow_html=True)
 
         if st.button("Apply Theme"):
-            update_theme_and_rerun(custom_theme)
+            save_theme(custom_theme)
+            st.session_state.current_theme = custom_theme
+            st.success("Theme applied successfully!")
+            st.rerun()
 
-    elif selected_setting == "Advanced":
-        st.header("Advanced Settings")
-        st.slider("Font size", min_value=8, max_value=24, value=16)
+    elif selected_setting == "Ollama":
+        st.header("Ollama Settings")
+        ollama_settings, models_list = load_ollama_settings()
+        model = st.selectbox(
+            "Model", models_list, index=models_list.index(ollama_settings["model"])
+        )
+        url = st.text_input("URL", value=ollama_settings["url"])
+        port = st.number_input(
+            "Port", min_value=1, max_value=65535, value=ollama_settings["port"]
+        )
+        max_tokens = st.number_input(
+            "Max Tokens",
+            min_value=1,
+            max_value=10000,
+            value=ollama_settings["max_tokens"],
+        )
 
+        if st.button("Save Ollama Settings"):
+            save_ollama_settings(model, url, port, max_tokens)
+            st.success("Ollama settings saved successfully!")
     # Apply the current theme
     st.markdown(get_theme_css(current_theme), unsafe_allow_html=True)

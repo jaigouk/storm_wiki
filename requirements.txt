@@ -1,6 +1,7 @@
 # storm
 knowledge_storm==0.2.3
 openai==1.36.1 # openai version for knowledge_storm 0.2.3
+ollama==0.3.0
 
 # streamlit
 streamlit==1.36.0

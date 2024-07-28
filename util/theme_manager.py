@@ -104,8 +104,11 @@ def load_theme_from_db():
 
     if result:
         stored_theme = json.loads(result[0])
-        return {**dracula_soft_dark, **stored_theme}
-    return dracula_soft_dark
+        # Use the stored theme as is, without merging with default
+        return stored_theme
+
+    # If no theme is stored, use the default Dracula Soft Dark theme
+    return dracula_soft_dark.copy()
 
 
 def get_contrasting_text_color(hex_color):
@@ -141,8 +144,6 @@ def get_option_menu_style(theme):
 
 
 def get_theme_css(theme):
-    contrasting_text_color = get_contrasting_text_color(theme["primaryColor"])
-    contrasting_bg_color = get_contrasting_text_color(theme["backgroundColor"])
     return f"""
     <style>
     :root {{
@@ -150,161 +151,105 @@ def get_theme_css(theme):
         --background-color: {theme['backgroundColor']};
         --secondary-background-color: {theme['secondaryBackgroundColor']};
         --text-color: {theme['textColor']};
-        --sidebar-background-color: {theme['sidebarBackgroundColor']};
-        --sidebar-text-color: {theme['sidebarTextColor']};
         --font: {theme['font']};
     }}
 
     /* Base styles */
-    body {{
+    .stApp {{
         background-color: var(--background-color);
         color: var(--text-color);
         font-family: var(--font);
     }}
-    .stApp {{
-        background-color: var(--background-color);
-    }}
-
-    /* Text elements */
-    p, h1, h2, h3, h4, h5, h6, li, span, label {{
-        color: var(--text-color) !important;
-    }}
 
     /* Sidebar */
     [data-testid="stSidebar"] {{
-        background-color: var(--sidebar-background-color);
-        color: var(--sidebar-text-color);
+        background-color: var(--secondary-background-color);
+        color: var(--text-color);
     }}
-    [data-testid="stSidebar"] .stMarkdown p {{
-        color: var(--sidebar-text-color) !important;
+
+    /* Text and headers */
+    .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, p, li {{
+        color: var(--text-color);
     }}
 
     /* Buttons */
     .stButton > button {{
+        color: var(--background-color);
         background-color: var(--primary-color);
-        color: {contrasting_text_color};
         border-color: var(--primary-color);
     }}
     .stButton > button:hover {{
-        background-color: {adjust_color_brightness(theme['primaryColor'], -20)};
-        color: {contrasting_text_color};
-        border-color: {adjust_color_brightness(theme['primaryColor'], -20)};
+        color: var(--background-color);
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
     }}
 
     /* Inputs */
     .stTextInput > div > div > input,
-    .stTextArea textarea,
-    .stNumberInput > div > div > input {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-        border-color: var(--primary-color);
+    .stNumberInput > div > div > input,
+    .stTextArea textarea {{
+        background-color: var(--secondary-background-color) !important;
+        color: var(--text-color) !important;
+        border-color: var(--primary-color) !important;
+    }}
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus,
+    .stTextArea textarea:focus {{
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 1px var(--primary-color) !important;
     }}
 
     /* Dropdowns */
-    .stSelectbox > div > div,
-    .stMultiSelect > div > div {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }}
-    .stSelectbox > div > div > div,
-    .stMultiSelect > div > div > div {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }}
-    .stSelectbox > div > div > ul,
-    .stMultiSelect > div > div > ul {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }}
-    .stSelectbox [data-baseweb="select"] > div,
-    .stMultiSelect [data-baseweb="select"] > div {{
+    .stSelectbox > div > div {{
         background-color: var(--secondary-background-color) !important;
-        color: var(--text-color);
-    }}
-
-    /* Checkbox and Radio */
-    .stCheckbox > label,
-    .stRadio > label {{
         color: var(--text-color) !important;
     }}
+    .stSelectbox > div > div > div {{
+        background-color: var(--secondary-background-color) !important;
+        color: var(--text-color) !important;
+    }}
+    .stSelectbox [data-baseweb="select"] > div,
+    .stSelectbox [data-baseweb="select"] ul,
+    .stSelectbox [data-baseweb="select"] [role="option"] {{
+        background-color: var(--secondary-background-color) !important;
+        color: var(--text-color) !important;
+    }}
+    .stSelectbox [data-baseweb="select"] [role="option"]:hover {{
+        background-color: var(--primary-color) !important;
+        color: var(--background-color) !important;
+    }}
 
-    /* Slider */
+    /* Number input step buttons */
+    .stNumberInput [data-testid="stNumberInput-StepDown"],
+    .stNumberInput [data-testid="stNumberInput-StepUp"] {{
+        background-color: var(--secondary-background-color) !important;
+        color: var(--text-color) !important;
+        border-color: var(--primary-color) !important;
+    }}
+    .stNumberInput [data-testid="stNumberInput-StepDown"]:hover,
+    .stNumberInput [data-testid="stNumberInput-StepUp"]:hover {{
+        background-color: var(--primary-color) !important;
+        color: var(--background-color) !important;
+    }}
+
+    /* Checkboxes and radio buttons */
+    .stCheckbox, .stRadio {{
+        color: var(--text-color);
+    }}
+
+    /* Sliders */
     .stSlider > div > div > div > div {{
         background-color: var(--primary-color);
     }}
 
-    /* Date and Time inputs */
-    .stDateInput > div > div > input,
-    .stTimeInput > div > div > input {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }}
-
-    /* File uploader */
-    .stFileUploader > div > div {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }}
-
-    /* Expander */
-    .streamlit-expanderHeader {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color) !important;
-    }}
-
-    /* Dataframes and Tables */
-    .stDataFrame, .stTable {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }}
-
-    /* Metric */
-    [data-testid="stMetricValue"] {{
-        color: var(--text-color) !important;
-    }}
-
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {{
-        background-color: var(--secondary-background-color);
-    }}
-    .stTabs [data-baseweb="tab"] {{
-        color: var(--text-color);
-    }}
-    .stTabs [data-baseweb="tab-border"] {{
-        background-color: var(--primary-color);
-    }}
-
-    /* Plotly charts */
-    .js-plotly-plot .plotly {{
-        background-color: var(--secondary-background-color) !important;
-    }}
-
-    /* Pagination */
-    .stPagination > div > div > div > div {{
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }}
-
-    /* Code blocks */
-    .stCodeBlock {{
+    /* Dataframes */
+    .stDataFrame {{
         background-color: var(--secondary-background-color);
     }}
 
     /* Tooltips */
     .stTooltipIcon {{
-        color: var(--text-color) !important;
-    }}
-
-    /* Option menu (if you're using streamlit-option-menu) */
-    .stOptionMenu {{
-        background-color: var(--sidebar-background-color);
-    }}
-    .stOptionMenu .nav-link {{
-        color: var(--sidebar-text-color) !important;
-    }}
-    .stOptionMenu .nav-link.active {{
-        background-color: var(--primary-color);
-        color: {contrasting_text_color} !important;
+        color: var(--text-color);
     }}
     </style>
     """
@@ -343,12 +288,13 @@ def update_theme_and_rerun(new_theme):
 
 def get_preview_html(theme):
     return f"""
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <div style="display: flex; gap: 10px;">
         <div style="background-color: {theme['secondaryBackgroundColor']}; color: {theme['textColor']}; padding: 10px; border-radius: 5px; width: 150px;">
             <h4 style="margin: 0;">Sidebar</h4>
-            <p>📊 General</p>
-            <p style="color: {theme['primaryColor']};">🎨 Theme</p>
-            <p>⚙️ Advanced</p>
+            <p><i class="fas fa-home"></i> General</p>
+            <p style="color: {theme['primaryColor']};"><i class="fas fa-pencil-alt"></i> Theme</p>
+            <p><i class="fas fa-cog"></i> Advanced</p>
         </div>
         <div style="background-color: {theme['backgroundColor']}; color: {theme['textColor']}; padding: 10px; border-radius: 5px; flex-grow: 1;">
             <h3>Preview</h3>

@@ -243,12 +243,20 @@ def get_theme_css(theme):
         color: var(--text-color) !important;
     }}
     .st-emotion-cache-1ppb27g:hover,
-    .st-emotion-cache-crpzz5:hover {{
+    .st-emotion-cache-crpzz5:hover,
+    .stSelectbox [data-baseweb="select"] [role="option"]:hover {{
         background-color: var(--primary-color) !important;
         color: var(--background-color) !important;
     }}
     .st-emotion-cache-sy3zga {{
         color: var(--text-color) !important;
+    }}
+
+    /* Ensure text color changes on hover for better contrast */
+    .st-emotion-cache-1ppb27g:hover .st-emotion-cache-sy3zga,
+    .st-emotion-cache-crpzz5:hover .st-emotion-cache-sy3zga,
+    .stSelectbox [data-baseweb="select"] [role="option"]:hover .st-emotion-cache-sy3zga {{
+        color: var(--background-color) !important;
     }}
 
     /* Number input step buttons */

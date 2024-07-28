@@ -55,6 +55,11 @@ def main():
     current_theme = load_and_apply_theme()
     st.session_state.current_theme = current_theme
 
+    # Check if a force rerun is requested
+    if st.session_state.get("force_rerun", False):
+        st.session_state.force_rerun = False
+        st.rerun()
+
     # Create the sidebar menu
     with st.sidebar:
         st.title("Storm wiki")

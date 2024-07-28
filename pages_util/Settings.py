@@ -124,22 +124,35 @@ def settings_page(selected_setting):
         if st.button("Save Search Options"):
             save_search_options(search_top_k, retrieve_top_k)
             st.success("Search options saved successfully!")
+
     elif selected_setting == "Theme":
         st.header("Theme Settings")
-        theme_mode = st.radio("Theme Mode", ["Light", "Dark"])
+
+        # Determine if the current theme is Light or Dark
+        current_theme_mode = (
+            "Light" if current_theme in light_themes.values() else "Dark"
+        )
+        theme_mode = st.radio(
+            "Theme Mode",
+            ["Light", "Dark"],
+            index=["Light", "Dark"].index(current_theme_mode),
+        )
 
         theme_options = light_themes if theme_mode == "Light" else dark_themes
-        current_theme = st.session_state.get("current_theme", load_theme())
+
+        # Find the name of the current theme
+        current_theme_name = next(
+            (k for k, v in theme_options.items() if v == current_theme), None
+        )
+
+        if current_theme_name is None:
+            # If the current theme is not in the selected mode, default to the first theme in the list
+            current_theme_name = list(theme_options.keys())[0]
 
         selected_theme_name = st.selectbox(
             "Select a theme",
             list(theme_options.keys()),
-            index=list(theme_options.keys()).index(
-                next(
-                    (k for k, v in theme_options.items() if v == current_theme),
-                    list(theme_options.keys())[0],
-                )
-            ),
+            index=list(theme_options.keys()).index(current_theme_name),
         )
 
         # Update current_theme when a new theme is selected
@@ -167,6 +180,7 @@ def settings_page(selected_setting):
             save_theme(custom_theme)
             st.session_state.current_theme = custom_theme
             st.success("Theme applied successfully!")
+            st.session_state.force_rerun = True
             st.rerun()
 
     elif selected_setting == "Ollama":

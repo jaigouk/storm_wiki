@@ -334,3 +334,50 @@ def get_preview_html(theme):
         </div>
     </div>
     """
+
+
+def get_my_articles_css(theme):
+    return f"""
+    <style>
+    .article-card {{
+        background-color: {theme['sidebarBackgroundColor']};
+        color: {theme['textColor']};
+        border: 1px solid {theme['primaryColor']};
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        transition: all 0.3s ease;
+    }}
+    .article-card:hover {{
+        background-color: {theme['primaryColor']};
+        color: {theme['backgroundColor']};
+    }}
+    .stButton>button {{
+        width: 100%;
+        height: 100%;
+        white-space: normal;
+        word-wrap: break-word;
+        background-color: transparent;
+        border: none;
+        padding: 0;
+    }}
+    .stButton>button:hover {{
+        background-color: transparent;
+        color: inherit;
+    }}
+    .pagination-container {{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+    }}
+    .pagination-container > div {{
+        margin: 0 10px;
+    }}
+    </style>
+    """

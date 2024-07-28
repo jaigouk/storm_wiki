@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from util.phoenix_setup import setup_phoenix
 from pages_util import MyArticles, CreateNewArticle, Settings
 from streamlit_option_menu import option_menu
-from util.session_state import clear_other_page_session_state
 from util.theme_manager import init_db, load_and_apply_theme, get_option_menu_style
 
 load_dotenv()
@@ -27,6 +26,19 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 wiki_root_dir = os.path.dirname(os.path.dirname(script_dir))
+
+
+def clear_other_page_session_state(page_index: int):
+    if page_index is None:
+        keys_to_delete = [key for key in st.session_state if key.startswith("page")]
+    else:
+        keys_to_delete = [
+            key
+            for key in st.session_state
+            if key.startswith("page") and f"page{page_index}" not in key
+        ]
+    for key in set(keys_to_delete):
+        del st.session_state[key]
 
 
 def main():

@@ -133,53 +133,6 @@ class UIComponents:
         UIComponents.from_markdown(article_text, table_content_sidebar)
 
     @staticmethod
-    def get_article_card_style(current_theme):
-        contrast_color = get_contrasting_text_color(
-            current_theme["secondaryBackgroundColor"]
-        )
-        return {
-            "card": {
-                "width": "100%",
-                "height": "116px",
-                "padding": "10px",
-                "border-radius": "5px",
-                "box-shadow": f"0 4px 6px 0 {current_theme['primaryColor']}33",
-                "margin": "0px",
-                "background-color": current_theme["secondaryBackgroundColor"],
-                "border": f"1px solid {current_theme['primaryColor']}",
-            },
-            "text": {
-                "font-size": "16px",
-                "line-height": "1.2",
-                "display": "-webkit-box",
-                "-webkit-line-clamp": "4",
-                "-webkit-box-orient": "vertical",
-                "overflow": "hidden",
-                "text-overflow": "ellipsis",
-                "padding": "5px",
-                "color": contrast_color,
-            },
-        }
-
-    @staticmethod
-    def create_article_card(article_name, current_theme):
-        cleaned_article_title = article_name.replace("_", " ")
-        card_style = UIComponents.get_article_card_style(current_theme)
-        card_style["card"]["border"] = (
-            f"1px solid {get_contrasting_text_color(current_theme['secondaryBackgroundColor'])}"
-        )
-        return card(
-            title="",
-            text=cleaned_article_title,
-            image=DemoFileIOHelper.read_image_as_base64(
-                os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)), "assets", "void.jpg"
-                )
-            ),
-            styles=card_style,
-        )
-
-    @staticmethod
     def display_persona_conversations(conversation_log):
         """
         Display persona conversation in dialogue UI

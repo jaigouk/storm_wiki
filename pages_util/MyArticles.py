@@ -14,55 +14,38 @@ def my_articles_page():
         current_theme = load_and_apply_theme()
         st.markdown(get_my_articles_css(current_theme), unsafe_allow_html=True)
 
-        if "page2_user_articles_file_path_dict" not in st.session_state:
+        # Load articles
+        if "user_articles" not in st.session_state:
             local_dir = get_output_dir()
-            st.session_state["page2_user_articles_file_path_dict"] = (
-                DemoFileIOHelper.read_structure_to_dict(local_dir)
+            st.session_state.user_articles = DemoFileIOHelper.read_structure_to_dict(
+                local_dir
             )
 
-        if "current_page" not in st.session_state:
-            st.session_state.current_page = 1
-        if "page_size" not in st.session_state:
-            st.session_state.page_size = 24
+        article_names = sorted(list(st.session_state.user_articles.keys()))
 
-        if "page2_selected_my_article" not in st.session_state:
-            display_article_list()
-        else:
-            display_selected_article()
+        # Pagination controls
+        total_articles = len(article_names)
+        page_sizes = [12, 24, 48]
+        col1, col2 = st.columns(2)
+        with col1:
+            page_size = st.selectbox(
+                "Page Size", options=page_sizes, index=1, key="page_size"
+            )
+        total_pages = math.ceil(total_articles / page_size)
+        with col2:
+            current_page = st.number_input(
+                "Page", min_value=1, max_value=total_pages, value=1, key="current_page"
+            )
 
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        st.exception(e)
+        # Calculate start and end indices for the current page
+        start_idx = (current_page - 1) * page_size
+        end_idx = min(start_idx + page_size, total_articles)
 
+        # Display articles for the current page
+        st.write(
+            f"Displaying articles {start_idx + 1} to {end_idx} out of {total_articles}"
+        )
 
-@st.experimental_fragment
-def display_article_list():
-    article_names = sorted(
-        list(st.session_state["page2_user_articles_file_path_dict"].keys())
-    )
-
-    if not article_names:
-        if st.button("Start your first research!", use_container_width=True):
-            st.session_state.selected_page = 1
-            st.session_state["manual_selection_override"] = True
-        return
-
-    total_pages = math.ceil(len(article_names) / st.session_state.page_size)
-
-    # Display pagination controls
-    display_pagination(len(article_names), total_pages)
-
-    # Ensure current_page is within valid range
-    st.session_state.current_page = max(
-        1, min(st.session_state.current_page, total_pages)
-    )
-
-    # Display articles based on current page and page size
-    start_idx = (st.session_state.current_page - 1) * st.session_state.page_size
-    end_idx = min(start_idx + st.session_state.page_size, len(article_names))
-
-    article_container = st.empty()
-    with article_container.container():
         for i in range(start_idx, end_idx, 3):
             cols = st.columns(3)
             for j in range(3):
@@ -74,55 +57,23 @@ def display_article_list():
                             key=f"article_{i+j}",
                             use_container_width=True,
                         ):
-                            st.session_state["page2_selected_my_article"] = article_name
-                            st.rerun()
+                            st.session_state.page2_selected_my_article = article_name
+                            st.experimental_rerun()
 
-    # Add this line to force a rerun when page size changes
-    st.session_state.last_page_size = st.session_state.page_size
+        # Display selected article if any
+        if "page2_selected_my_article" in st.session_state:
+            display_selected_article()
 
-
-def display_pagination(total_articles, total_pages):
-    st.markdown("<div class='pagination-container'>", unsafe_allow_html=True)
-    cols = st.columns(3)
-
-    with cols[0]:
-        st.markdown(f"Total: {total_articles} articles")
-
-    with cols[1]:
-        new_page = st.number_input(
-            f"Page (of {total_pages})",
-            min_value=1,
-            max_value=total_pages,
-            value=st.session_state.current_page,
-            step=1,
-            key="page_input",
-        )
-        if new_page != st.session_state.current_page:
-            st.session_state.current_page = new_page
-            st.rerun()
-
-    with cols[2]:
-        new_page_size = st.selectbox(
-            "Page Size",
-            options=[12, 24, 48, 72],
-            index=[12, 24, 48, 72].index(st.session_state.page_size),
-            key="page_size_select",
-        )
-        if new_page_size != st.session_state.page_size:
-            st.session_state.page_size = new_page_size
-            st.session_state.current_page = (
-                1  # Reset to first page when changing page size
-            )
-            st.rerun()
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        st.exception(e)
 
 
 def display_selected_article():
-    selected_article_name = st.session_state["page2_selected_my_article"]
-    selected_article_file_path_dict = st.session_state[
-        "page2_user_articles_file_path_dict"
-    ][selected_article_name]
+    selected_article_name = st.session_state.page2_selected_my_article
+    selected_article_file_path_dict = st.session_state.user_articles[
+        selected_article_name
+    ]
 
     UIComponents.display_article_page(
         selected_article_name=selected_article_name.replace("_", " "),
@@ -134,5 +85,5 @@ def display_selected_article():
     )
 
     if st.button("Back to Article List"):
-        del st.session_state["page2_selected_my_article"]
-        st.rerun()
+        del st.session_state.page2_selected_my_article
+        st.experimental_rerun()

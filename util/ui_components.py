@@ -1,8 +1,7 @@
 import streamlit as st
 from .file_io import DemoFileIOHelper
 from .text_processing import DemoTextProcessingHelper
-from util.theme_manager import load_and_apply_theme, get_contrasting_text_color
-from streamlit_card import card
+
 import os
 import markdown
 from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler

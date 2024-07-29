@@ -19,7 +19,6 @@ from .search import CombinedSearchAPI
 from .artifact_helpers import convert_txt_to_md
 from pages_util.Settings import (
     load_ollama_settings,
-    save_ollama_settings,
     load_search_options,
 )
 
@@ -82,7 +81,11 @@ def add_examples_to_runner(runner):
 
 
 def run_storm_with_fallback(
-    topic: str, current_working_dir: str, callback_handler=None
+    topic: str,
+    current_working_dir: str,
+    callback_handler=None,
+    ollama_kwargs=None,
+    engine_args=None,
 ):
     def log_progress(message: str):
         st.info(message)
@@ -93,52 +96,59 @@ def run_storm_with_fallback(
     log_progress("Initializing language models...")
     llm_configs = STORMWikiLMConfigs()
 
-    # TODO: add to settings
-    engine_args = STORMWikiRunnerArguments(
-        output_dir=current_working_dir,
-        max_conv_turn=3,
-        max_perspective=3,
-        search_top_k=20,
-        retrieve_top_k=20,
-    )
+    if engine_args is None:
+        engine_args = STORMWikiRunnerArguments(
+            output_dir=current_working_dir,
+            max_conv_turn=3,
+            max_perspective=3,
+            search_top_k=20,
+            retrieve_top_k=20,
+        )
 
     log_progress("Setting up search engine...")
     rm = CombinedSearchAPI(max_results=engine_args.search_top_k)
 
-    def setup_and_run(lm_class, **kwargs):
-        for lm_type in [
-            "conv_simulator",
-            "question_asker",
-            "outline_gen",
-            "article_gen",
-            "article_polish",
-        ]:
-            # TODO: add to settings
-            max_tokens = 1000 if lm_type == "article_polish" else 2000
-            lm = lm_class(max_tokens=max_tokens, **kwargs)
-            getattr(llm_configs, f"set_{lm_type}_lm")(lm)
-
-        runner = STORMWikiRunner(engine_args, llm_configs, rm)
-        add_examples_to_runner(runner)
-        runner.run(
-            topic=topic,
-            do_research=True,
-            do_generate_outline=True,
-            do_generate_article=True,
-            do_polish_article=True,
-        )
-        runner.post_run()
-        return runner
+    if ollama_kwargs is None:
+        ollama_kwargs = {
+            "model": "jaigouk/hermes-2-theta-llama-3:latest",
+            "url": "http://localhost",
+            "port": 11434,  # Add the port here
+            "stop": ("\n\n---",),
+        }
 
     log_progress("Starting STORM process with Ollama...")
-    # TODO: add to settings
-    ollama_kwargs = {
-        "model": "jaigouk/hermes-2-theta-llama-3:latest",
-        "url": "http://localhost",
-        "port": 11434,
-        "stop": ("\n\n---",),
-    }
-    return setup_and_run(OllamaClient, **ollama_kwargs)
+    for lm_type in [
+        "conv_simulator",
+        "question_asker",
+        "outline_gen",
+        "article_gen",
+        "article_polish",
+    ]:
+        max_tokens = (
+            1000
+            if lm_type == "article_polish"
+            else ollama_kwargs.get("max_tokens", 2000)
+        )
+        lm = OllamaClient(
+            model=ollama_kwargs["model"],
+            url=ollama_kwargs["url"],
+            port=ollama_kwargs["port"],  # Pass the port here
+            max_tokens=max_tokens,
+            stop=ollama_kwargs["stop"],
+        )
+        getattr(llm_configs, f"set_{lm_type}_lm")(lm)
+
+    runner = STORMWikiRunner(engine_args, llm_configs, rm)
+    add_examples_to_runner(runner)
+    runner.run(
+        topic=topic,
+        do_research=True,
+        do_generate_outline=True,
+        do_generate_article=True,
+        do_polish_article=True,
+    )
+    runner.post_run()
+    return runner
 
 
 def process_raw_search_results(
@@ -206,7 +216,41 @@ def set_storm_runner():
 
     os.makedirs(current_working_dir, exist_ok=True)
 
-    st.session_state["run_storm"] = run_storm_with_fallback
+    # Load Ollama settings
+    ollama_settings, _ = load_ollama_settings()
+
+    # Load search options
+    search_options = load_search_options()
+
+    # Use saved settings or default values
+    model = ollama_settings.get("model", "jaigouk/hermes-2-theta-llama-3:latest")
+    url = ollama_settings.get("url", "http://localhost")
+    port = ollama_settings.get("port", 11434)  # Ensure port is loaded
+    max_tokens = ollama_settings.get("max_tokens", 2000)
+    search_top_k = search_options.get("search_top_k", 20)
+    retrieve_top_k = search_options.get("retrieve_top_k", 20)
+
+    # Update the run_storm_with_fallback function to use these settings
+    def run_storm_with_config(*args, **kwargs):
+        kwargs["ollama_kwargs"] = {
+            "model": model,
+            "url": url,
+            "port": port,  # Include port in ollama_kwargs
+            "max_tokens": max_tokens,
+            "stop": ("\n\n---",),
+        }
+        kwargs["engine_args"] = STORMWikiRunnerArguments(
+            output_dir=current_working_dir,
+            max_conv_turn=3,
+            max_perspective=3,
+            search_top_k=search_top_k,
+            retrieve_top_k=retrieve_top_k,
+        )
+        return run_storm_with_fallback(*args, **kwargs)
+
+    # Set the run_storm function in the session state
+    st.session_state["run_storm"] = run_storm_with_config
+
     convert_txt_to_md(current_working_dir)
 
 

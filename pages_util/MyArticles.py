@@ -9,64 +9,17 @@ from util.theme_manager import load_and_apply_theme, get_my_articles_css
 logging.basicConfig(level=logging.DEBUG)
 
 
-def my_articles_page():
-    try:
-        current_theme = load_and_apply_theme()
-        st.markdown(get_my_articles_css(current_theme), unsafe_allow_html=True)
+def initialize_session_state():
+    if "page_size" not in st.session_state:
+        st.session_state.page_size = 24
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = 1
 
-        # Load articles
-        if "user_articles" not in st.session_state:
-            local_dir = get_output_dir()
-            st.session_state.user_articles = DemoFileIOHelper.read_structure_to_dict(
-                local_dir
-            )
 
-        article_names = sorted(list(st.session_state.user_articles.keys()))
-
-        # Pagination controls
-        total_articles = len(article_names)
-        page_sizes = [12, 24, 48]
-        col1, col2 = st.columns(2)
-        with col1:
-            page_size = st.selectbox(
-                "Page Size", options=page_sizes, index=1, key="page_size"
-            )
-        total_pages = math.ceil(total_articles / page_size)
-        with col2:
-            current_page = st.number_input(
-                "Page", min_value=1, max_value=total_pages, value=1, key="current_page"
-            )
-
-        # Calculate start and end indices for the current page
-        start_idx = (current_page - 1) * page_size
-        end_idx = min(start_idx + page_size, total_articles)
-
-        # Display articles for the current page
-        st.write(
-            f"Displaying articles {start_idx + 1} to {end_idx} out of {total_articles}"
-        )
-
-        for i in range(start_idx, end_idx, 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < end_idx:
-                    article_name = article_names[i + j]
-                    with cols[j]:
-                        if st.button(
-                            article_name.replace("_", " "),
-                            key=f"article_{i+j}",
-                            use_container_width=True,
-                        ):
-                            st.session_state.page2_selected_my_article = article_name
-                            st.experimental_rerun()
-
-        # Display selected article if any
-        if "page2_selected_my_article" in st.session_state:
-            display_selected_article()
-
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        st.exception(e)
+def update_page_size():
+    st.session_state.page_size = st.session_state.page_size_select
+    st.session_state.current_page = 1
+    st.session_state.need_rerun = True
 
 
 def display_selected_article():
@@ -86,4 +39,99 @@ def display_selected_article():
 
     if st.button("Back to Article List"):
         del st.session_state.page2_selected_my_article
-        st.experimental_rerun()
+        st.rerun()
+
+
+def display_article_list(page_size):
+    articles = st.session_state.user_articles
+    article_keys = list(articles.keys())
+    total_articles = len(article_keys)
+
+    num_pages = (total_articles + page_size - 1) // page_size
+    current_page = st.selectbox("Page", range(1, num_pages + 1)) - 1
+    start_idx = current_page * page_size
+    end_idx = min(start_idx + page_size, total_articles)
+
+    # Create a 2-column layout
+    cols = st.columns(2)
+
+    for i in range(start_idx, end_idx):
+        article_key = article_keys[i]
+        article_file_path_dict = articles[article_key]
+
+        with cols[i % 2]:
+            with st.container():
+                # Article card
+                article_name = article_key.replace("_", " ")
+                st.subheader(article_name)
+
+                # Display a preview of the article content
+                article_data = DemoFileIOHelper.assemble_article_data(
+                    article_file_path_dict
+                )
+                if article_data:
+                    content_preview = article_data.get("content", "")[
+                        :100
+                    ]  # First 100 characters
+                    st.write(
+                        content_preview + "..."
+                        if len(content_preview) == 100
+                        else content_preview
+                    )
+
+                if st.button("Read More", key=f"view_{article_key}"):
+                    st.session_state.page2_selected_my_article = article_key
+                    st.rerun()
+
+    # Navigation
+    col1, col2 = st.columns(2)
+    if current_page > 0:
+        if col1.button("Previous Page"):
+            st.session_state.current_page = current_page - 1
+            st.rerun()
+    if current_page < num_pages - 1:
+        if col2.button("Next Page"):
+            st.session_state.current_page = current_page + 1
+            st.rerun()
+
+
+# In your my_articles_page function:
+def my_articles_page():
+    initialize_session_state()
+    current_theme = load_and_apply_theme()
+    st.markdown(get_my_articles_css(current_theme), unsafe_allow_html=True)
+
+    if "user_articles" not in st.session_state:
+        local_dir = get_output_dir()
+        st.session_state.user_articles = DemoFileIOHelper.read_structure_to_dict(
+            local_dir
+        )
+
+    if "page_size" not in st.session_state:
+        st.session_state.page_size = 12  # Default page size
+
+    page_size_options = [12, 24, 48, 96]
+    selected_page_size = st.selectbox(
+        "Items per page",
+        page_size_options,
+        index=page_size_options.index(st.session_state.page_size),
+    )
+
+    if selected_page_size != st.session_state.page_size:
+        st.session_state.page_size = selected_page_size
+
+    if "page2_selected_my_article" in st.session_state:
+        selected_article_name = st.session_state.page2_selected_my_article
+        selected_article_file_path_dict = st.session_state.user_articles[
+            selected_article_name
+        ]
+        UIComponents.display_article_page(
+            selected_article_name,
+            selected_article_file_path_dict,
+            show_title=True,
+            show_main_article=True,
+            show_feedback_form=False,
+            show_qa_panel=False,
+        )
+    else:
+        display_article_list(page_size=st.session_state.page_size)

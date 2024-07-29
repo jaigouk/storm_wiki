@@ -101,8 +101,8 @@ def run_storm_with_fallback(
             output_dir=current_working_dir,
             max_conv_turn=3,
             max_perspective=3,
-            search_top_k=20,
-            retrieve_top_k=20,
+            search_top_k=3,
+            retrieve_top_k=3,
         )
 
     log_progress("Setting up search engine...")
@@ -127,7 +127,7 @@ def run_storm_with_fallback(
         max_tokens = (
             1000
             if lm_type == "article_polish"
-            else ollama_kwargs.get("max_tokens", 2000)
+            else ollama_kwargs.get("max_tokens", 500)
         )
         lm = OllamaClient(
             model=ollama_kwargs["model"],
@@ -226,9 +226,9 @@ def set_storm_runner():
     model = ollama_settings.get("model", "jaigouk/hermes-2-theta-llama-3:latest")
     url = ollama_settings.get("url", "http://localhost")
     port = ollama_settings.get("port", 11434)  # Ensure port is loaded
-    max_tokens = ollama_settings.get("max_tokens", 2000)
-    search_top_k = search_options.get("search_top_k", 20)
-    retrieve_top_k = search_options.get("retrieve_top_k", 20)
+    max_tokens = ollama_settings.get("max_tokens", 500)
+    search_top_k = search_options.get("search_top_k", 3)
+    retrieve_top_k = search_options.get("retrieve_top_k", 3)
 
     # Update the run_storm_with_fallback function to use these settings
     def run_storm_with_config(*args, **kwargs):

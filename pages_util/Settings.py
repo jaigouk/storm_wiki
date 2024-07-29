@@ -41,7 +41,7 @@ def load_search_options():
 
     if result:
         return json.loads(result[0])
-    return {"search_top_k": 20, "retrieve_top_k": 20}
+    return {"search_top_k": 3, "retrieve_top_k": 3}
 
 
 def save_ollama_settings(model, url, port, max_tokens):

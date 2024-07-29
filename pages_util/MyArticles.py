@@ -1,4 +1,5 @@
 import logging
+import re
 import streamlit as st
 import math
 from util.file_io import DemoFileIOHelper
@@ -43,6 +44,7 @@ def display_selected_article():
 
 
 def display_article_list(page_size):
+    current_theme = load_and_apply_theme()
     articles = st.session_state.user_articles
     article_keys = list(articles.keys())
     total_articles = len(article_keys)
@@ -70,29 +72,19 @@ def display_article_list(page_size):
                     article_file_path_dict
                 )
                 if article_data:
-                    content_preview = article_data.get("content", "")[
-                        :100
-                    ]  # First 100 characters
-                    st.write(
-                        content_preview + "..."
-                        if len(content_preview) == 100
-                        else content_preview
-                    )
+                    # st.write(article_data.keys())
+                    content_preview = article_data.get("short_text", "")
 
-                if st.button("Read More", key=f"view_{article_key}"):
+                    st.write(content_preview + "...")
+
+                if st.button(
+                    "Read More",
+                    type="secondary",
+                    key=f"view_{article_key}",
+                    use_container_width=False,
+                ):
                     st.session_state.page2_selected_my_article = article_key
                     st.rerun()
-
-    # Navigation
-    col1, col2 = st.columns(2)
-    if current_page > 0:
-        if col1.button("Previous Page"):
-            st.session_state.current_page = current_page - 1
-            st.rerun()
-    if current_page < num_pages - 1:
-        if col2.button("Next Page"):
-            st.session_state.current_page = current_page + 1
-            st.rerun()
 
 
 # In your my_articles_page function:

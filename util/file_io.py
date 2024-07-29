@@ -110,7 +110,17 @@ class DemoFileIOHelper:
             # Parse the article content
             parsed_article_content = parse(article_content)
 
-            article_data = {"article": parsed_article_content}
+            lines = article_content.splitlines()
+            cleaned_lines = [
+                line for line in lines if not line.startswith(("#", "##", "###"))
+            ]
+            parsed_article_content = "\n".join(cleaned_lines)
+            short_text = parsed_article_content[:100]
+            article_data = {
+                "article": parsed_article_content,
+                "short_text": short_text,
+                "citation": None,
+            }
 
             # Add citations if available
             if "url_to_info.json" in article_file_path_dict:

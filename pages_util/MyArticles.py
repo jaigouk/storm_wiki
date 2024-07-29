@@ -102,15 +102,16 @@ def my_articles_page():
     if "page_size" not in st.session_state:
         st.session_state.page_size = 12  # Default page size
 
-    page_size_options = [12, 24, 48, 96]
-    selected_page_size = st.selectbox(
-        "Items per page",
-        page_size_options,
-        index=page_size_options.index(st.session_state.page_size),
-    )
+    if "page2_selected_my_article" not in st.session_state:
+        page_size_options = [12, 24, 48, 96]
+        selected_page_size = st.selectbox(
+            "Items per page",
+            page_size_options,
+            index=page_size_options.index(st.session_state.page_size),
+        )
 
-    if selected_page_size != st.session_state.page_size:
-        st.session_state.page_size = selected_page_size
+        if selected_page_size != st.session_state.page_size:
+            st.session_state.page_size = selected_page_size
 
     if "page2_selected_my_article" in st.session_state:
         selected_article_name = st.session_state.page2_selected_my_article

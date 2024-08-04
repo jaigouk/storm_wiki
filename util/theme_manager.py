@@ -5,7 +5,7 @@ import json
 dracula_soft_dark = {
     "primaryColor": "#bf96f9",
     "backgroundColor": "#282a36",
-    "secondaryBackgroundColor": "#44475a",
+    "secondaryBackgroundColor": "#444759",
     "textColor": "#C0C0D0",
     "sidebarBackgroundColor": "#444759",
     "sidebarTextColor": "#C0C0D0",
@@ -17,7 +17,7 @@ tokyo_night = {
     "backgroundColor": "#1a1b26",
     "secondaryBackgroundColor": "#24283b",
     "textColor": "#a9b1d6",
-    "sidebarBackgroundColor": "#16161e",
+    "sidebarBackgroundColor": "#24283b",
     "sidebarTextColor": "#565f89",
     "font": "sans serif",
 }
@@ -27,7 +27,7 @@ github_dark = {
     "backgroundColor": "#0d1117",
     "secondaryBackgroundColor": "#161b22",
     "textColor": "#c9d1d9",
-    "sidebarBackgroundColor": "#090c10",
+    "sidebarBackgroundColor": "#161b22",
     "sidebarTextColor": "#8b949e",
     "font": "sans serif",
 }
@@ -37,7 +37,7 @@ github_light = {
     "backgroundColor": "#ffffff",
     "secondaryBackgroundColor": "#f6f8fa",
     "textColor": "#24292f",
-    "sidebarBackgroundColor": "#f0f2f4",
+    "sidebarBackgroundColor": "#f6f8fa",
     "sidebarTextColor": "#57606a",
     "font": "sans serif",
 }
@@ -123,9 +123,8 @@ def get_contrasting_text_color(hex_color):
 def get_option_menu_style(theme):
     return {
         "container": {
-            "padding": "0.5rem",
+            "padding": "0!important",
             "background-color": theme["sidebarBackgroundColor"],
-            "border-radius": "0px",
         },
         "icon": {"color": theme["sidebarTextColor"], "font-size": "16px"},
         "nav-link": {
@@ -134,11 +133,12 @@ def get_option_menu_style(theme):
             "text-align": "left",
             "margin": "0px",
             "--hover-color": theme["primaryColor"],
-            "background-color": "transparent",
+            "background-color": theme["sidebarBackgroundColor"],
         },
         "nav-link-selected": {
             "background-color": theme["primaryColor"],
-            "color": get_contrasting_text_color(theme["primaryColor"]),
+            "color": theme["backgroundColor"],
+            "font-weight": "bold",
         },
     }
 
@@ -252,7 +252,7 @@ def get_theme_css(theme):
         color: var(--text-color) !important;
     }}
 
-    /* Ensure text color changes on hover for better contrast */
+    /* Ensure text color zchanges on hover for better contrast */
     .st-emotion-cache-1ppb27g:hover .st-emotion-cache-sy3zga,
     .st-emotion-cache-crpzz5:hover .st-emotion-cache-sy3zga,
     .stSelectbox [data-baseweb="select"] [role="option"]:hover .st-emotion-cache-sy3zga {{
@@ -333,51 +333,4 @@ def get_preview_html(theme):
             <input type="text" placeholder="Input field" style="background-color: {theme['secondaryBackgroundColor']}; color: {theme['textColor']}; border: 1px solid {theme['primaryColor']}; padding: 5px; margin-top: 5px; width: 100%;">
         </div>
     </div>
-    """
-
-
-def get_my_articles_css(theme):
-    return f"""
-    <style>
-    .article-card {{
-        background-color: {theme['sidebarBackgroundColor']};
-        color: {theme['textColor']};
-        border: 1px solid {theme['primaryColor']};
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 10px;
-        height: 100px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        transition: all 0.3s ease;
-    }}
-    .article-card:hover {{
-        background-color: {theme['primaryColor']};
-        color: {theme['backgroundColor']};
-    }}
-    .stButton>button {{
-        width: 100%;
-        height: 100%;
-        white-space: normal;
-        word-wrap: break-word;
-        background-color: transparent;
-        border: none;
-        padding: 0;
-    }}
-    .stButton>button:hover {{
-        background-color: transparent;
-        color: inherit;
-    }}
-    .pagination-container {{
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 20px;
-    }}
-    .pagination-container > div {{
-        margin: 0 10px;
-    }}
-    </style>
     """

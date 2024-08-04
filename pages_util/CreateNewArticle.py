@@ -2,16 +2,21 @@ import os
 from datetime import datetime
 import streamlit as st
 from util.ui_components import UIComponents, StreamlitCallbackHandler
-from util.file_io import DemoFileIOHelper
+from util.file_io import FileIOHelper
 from util.text_processing import convert_txt_to_md
-from util.path_utils import get_output_dir
 from util.storm_runner import set_storm_runner, process_search_results
 from util.theme_manager import load_and_apply_theme
+from pages_util.Settings import (
+    get_available_search_engines,
+    load_search_options,
+    save_search_options,
+    SEARCH_ENGINES,
+)
 
 
 def sanitize_title(title):
-    # Remove leading/trailing spaces and replace internal spaces with underscores
-    return title.strip().replace(" ", "_")
+    sanitized = title.strip().replace(" ", "_")
+    return sanitized.rstrip("_")  #
 
 
 def add_date_to_file(file_path):
@@ -23,7 +28,63 @@ def add_date_to_file(file_path):
 
 
 def create_new_article_page():
-    current_theme = load_and_apply_theme()
+    load_and_apply_theme()
+
+    # Initialize session state variables
+    if "page3_write_article_state" not in st.session_state:
+        st.session_state["page3_write_article_state"] = "not started"
+
+    if "page3_current_working_dir" not in st.session_state:
+        st.session_state["page3_current_working_dir"] = FileIOHelper.get_output_dir()
+
+    if "page3_topic_name_cleaned" not in st.session_state:
+        st.session_state["page3_topic_name_cleaned"] = ""
+    # Display search options in sidebar if not in completed state
+    if st.session_state["page3_write_article_state"] != "completed":
+        # Add search options in the sidebar
+        st.sidebar.header("Search Options")
+        search_options = load_search_options()
+
+        # Provide default values if keys are missing
+        default_primary_engine = list(SEARCH_ENGINES.keys())[
+            0
+        ]  # First engine as default
+        primary_engine = st.sidebar.selectbox(
+            "Primary Search Engine",
+            options=list(SEARCH_ENGINES.keys()),
+            index=list(SEARCH_ENGINES.keys()).index(
+                search_options.get("primary_engine", default_primary_engine)
+            ),
+        )
+
+        # Create a list of fallback options excluding the primary engine
+        fallback_options = [None] + [
+            engine for engine in SEARCH_ENGINES.keys() if engine != primary_engine
+        ]
+
+        # Check if the current fallback engine is in the fallback options
+        current_fallback = search_options.get("fallback_engine")
+        if current_fallback not in fallback_options:
+            current_fallback = None
+
+        fallback_engine = st.sidebar.selectbox(
+            "Fallback Search Engine",
+            options=fallback_options,
+            index=fallback_options.index(current_fallback),
+        )
+
+        search_top_k = st.sidebar.number_input(
+            "Search Top K",
+            min_value=1,
+            max_value=100,
+            value=search_options.get("search_top_k", 10),  # Default to 10 if not set
+        )
+        retrieve_top_k = st.sidebar.number_input(
+            "Retrieve Top K",
+            min_value=1,
+            max_value=100,
+            value=search_options.get("retrieve_top_k", 5),  # Default to 5 if not set
+        )
 
     if "page3_write_article_state" not in st.session_state:
         st.session_state["page3_write_article_state"] = "not started"
@@ -38,21 +99,18 @@ def create_new_article_page():
                     placeholder="Enter the topic",
                     help="Enter the main topic or question for your article",
                 )
-
                 st.text_area(
                     "Elaborate on the purpose",
                     key="page3_purpose",
                     placeholder="Please type here to elaborate on the purpose of writing this article",
                     help="Provide more context or specific areas you want to explore",
-                    height=100,
+                    height=300,
                 )
-
                 submit_button = st.form_submit_button(
                     label="Research",
                     help="Start researching the topic",
                     use_container_width=True,
                 )
-
                 if submit_button:
                     if not st.session_state["page3_topic"].strip():
                         st.warning("Topic could not be empty", icon="⚠️")
@@ -64,13 +122,11 @@ def create_new_article_page():
                         st.rerun()
 
     if st.session_state["page3_write_article_state"] == "initiated":
-        current_working_dir = get_output_dir()
+        current_working_dir = st.session_state["page3_current_working_dir"]
         if not os.path.exists(current_working_dir):
             os.makedirs(current_working_dir)
-
         if "run_storm" not in st.session_state:
             set_storm_runner()
-        st.session_state["page3_current_working_dir"] = current_working_dir
         st.session_state["page3_write_article_state"] = "pre_writing"
 
     if st.session_state["page3_write_article_state"] == "pre_writing":
@@ -108,6 +164,35 @@ def create_new_article_page():
                     callback_handler=callback,
                 )
                 if runner:
+                    # Update search options if the attributes exist
+                    if hasattr(runner, "engine_args"):
+                        runner.engine_args.search_top_k = st.session_state[
+                            "current_search_options"
+                        ]["search_top_k"]
+                        runner.engine_args.retrieve_top_k = st.session_state[
+                            "current_search_options"
+                        ]["retrieve_top_k"]
+                    elif hasattr(runner, "config"):
+                        runner.config.search_top_k = st.session_state[
+                            "current_search_options"
+                        ]["search_top_k"]
+                        runner.config.retrieve_top_k = st.session_state[
+                            "current_search_options"
+                        ]["retrieve_top_k"]
+
+                    # Update the search engine if needed
+                    if hasattr(runner, "rm") and hasattr(
+                        runner.rm, "set_search_engine"
+                    ):
+                        runner.rm.set_search_engine(
+                            primary_engine=st.session_state["current_search_options"][
+                                "primary_engine"
+                            ],
+                            fallback_engine=st.session_state["current_search_options"][
+                                "fallback_engine"
+                            ],
+                        )
+
                     conversation_log_path = os.path.join(
                         st.session_state["page3_current_working_dir"],
                         st.session_state["page3_topic_name_cleaned"],
@@ -115,12 +200,11 @@ def create_new_article_page():
                     )
                     if os.path.exists(conversation_log_path):
                         UIComponents.display_persona_conversations(
-                            DemoFileIOHelper.read_json_file(conversation_log_path)
+                            FileIOHelper.read_json_file(conversation_log_path)
                         )
                     st.session_state["page3_write_article_state"] = "final_writing"
                     status.update(label="brain**STORM**ing complete!", state="complete")
                     progress_bar.progress(100)
-
                     # Store the runner in the session state
                     st.session_state["runner"] = runner
                 else:
@@ -204,8 +288,11 @@ def create_new_article_page():
                 st.rerun()
 
     if st.session_state["page3_write_article_state"] == "completed":
-        # display polished article
-        current_working_dir_paths = DemoFileIOHelper.read_structure_to_dict(
+        # Clear the sidebar
+        st.sidebar.empty()
+
+        # Display the article
+        current_working_dir_paths = FileIOHelper.read_structure_to_dict(
             st.session_state["page3_current_working_dir"]
         )
         current_article_file_path_dict = current_working_dir_paths.get(
@@ -213,17 +300,53 @@ def create_new_article_page():
         )
 
         if not current_article_file_path_dict:
-            st.error(
-                f"No article data found for topic: {st.session_state['page3_topic_name_cleaned']}"
+            # Try with an added underscore
+            alt_topic_name = st.session_state["page3_topic_name_cleaned"] + "_"
+            current_article_file_path_dict = current_working_dir_paths.get(
+                alt_topic_name, {}
             )
-            st.error(
-                f"Current working directory: {st.session_state['page3_current_working_dir']}"
-            )
-            st.error(f"Directory structure: {current_working_dir_paths}")
-        else:
+
+            if not current_article_file_path_dict:
+                st.error(
+                    f"No article data found for topic: {st.session_state['page3_topic_name_cleaned']}"
+                )
+                st.error(
+                    f"Current working directory: {st.session_state['page3_current_working_dir']}"
+                )
+                st.error(f"Directory structure: {current_working_dir_paths}")
+            else:
+                st.warning(
+                    f"Found article data with a trailing underscore in the folder name. This will be fixed in future runs."
+                )
+                # Use the alternative topic name for display
+                st.session_state["page3_topic_name_cleaned"] = alt_topic_name
+
+        if current_article_file_path_dict:
             UIComponents.display_article_page(
-                selected_article_name=st.session_state["page3_topic_name_cleaned"],
+                selected_article_name=st.session_state[
+                    "page3_topic_name_cleaned"
+                ].rstrip("_"),
                 selected_article_file_path_dict=current_article_file_path_dict,
                 show_title=True,
                 show_main_article=True,
+                show_references_in_sidebar=True,
             )
+
+    # Cleanup step: rename folder to remove trailing underscore if present
+    if st.session_state["page3_topic_name_cleaned"]:
+        old_folder_path = os.path.join(
+            st.session_state["page3_current_working_dir"],
+            st.session_state["page3_topic_name_cleaned"],
+        )
+        new_folder_path = os.path.join(
+            st.session_state["page3_current_working_dir"],
+            st.session_state["page3_topic_name_cleaned"].rstrip("_"),
+        )
+        if os.path.exists(old_folder_path) and old_folder_path != new_folder_path:
+            try:
+                os.rename(old_folder_path, new_folder_path)
+                st.session_state["page3_topic_name_cleaned"] = st.session_state[
+                    "page3_topic_name_cleaned"
+                ].rstrip("_")
+            except Exception as e:
+                st.warning(f"Unable to rename folder: {str(e)}")

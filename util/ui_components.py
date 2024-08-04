@@ -1,12 +1,11 @@
 import streamlit as st
-from .file_io import DemoFileIOHelper
+from .file_io import FileIOHelper
 from .text_processing import DemoTextProcessingHelper
-
-import os
-import markdown
 from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
-import re
 import unidecode
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class UIComponents:
@@ -18,8 +17,12 @@ class UIComponents:
         show_main_article=True,
         show_feedback_form=False,
         show_qa_panel=False,
+        show_references_in_sidebar=False,
     ):
         try:
+            logging.info(f"Displaying article page for: {selected_article_name}")
+            logging.info(f"Article file path dict: {selected_article_file_path_dict}")
+
             current_theme = st.session_state.current_theme
             if show_title:
                 st.markdown(
@@ -28,7 +31,7 @@ class UIComponents:
                 )
 
             if show_main_article:
-                article_data = DemoFileIOHelper.assemble_article_data(
+                article_data = FileIOHelper.assemble_article_data(
                     selected_article_file_path_dict
                 )
 
@@ -36,16 +39,24 @@ class UIComponents:
                     st.warning("No article data found.")
                     return
 
+                logging.info(f"Article data keys: {article_data.keys()}")
                 UIComponents.display_main_article(
-                    article_data, show_feedback_form, show_qa_panel
+                    article_data,
+                    show_feedback_form,
+                    show_qa_panel,
+                    show_references_in_sidebar,
                 )
         except Exception as e:
             st.error(f"Error displaying article: {str(e)}")
             st.exception(e)
+            logging.exception("Error in display_article_page")
 
     @staticmethod
     def display_main_article(
-        article_data, show_feedback_form=False, show_qa_panel=False
+        article_data,
+        show_feedback_form=False,
+        show_qa_panel=False,
+        show_references_in_sidebar=False,
     ):
         try:
             current_theme = st.session_state.current_theme
@@ -72,7 +83,7 @@ class UIComponents:
             # display reference panel
             if "citations" in article_data:
                 with st.sidebar.expander("**References**", expanded=True):
-                    with st.container(height=800, border=False):
+                    with st.container(height=400, border=False):
                         UIComponents._display_references(
                             citation_dict=article_data.get("citations", {})
                         )
@@ -106,11 +117,21 @@ class UIComponents:
             ]
             selected_key = st.selectbox("Select a reference", reference_list)
             citation_val = citation_dict[reference_list.index(selected_key) + 1]
-            citation_val["title"] = citation_val["title"].replace("$", "\\$")
-            st.markdown(f"**Title:** {citation_val['title']}")
-            st.markdown(f"**Url:** {citation_val['url']}")
-            snippets = "\n\n".join(citation_val["snippets"]).replace("$", "\\$")
-            st.markdown(f"**Highlights:**\n\n {snippets}")
+
+            title = citation_val.get("title", "No title available").replace("$", "\\$")
+            st.markdown(f"**Title:** {title}")
+
+            url = citation_val.get("url", "No URL available")
+            st.markdown(f"**Url:** {url}")
+
+            description = citation_val.get(
+                "description", "No description available"
+            ).replace("$", "\\$")
+            st.markdown(f"**Description:**\n\n {description}")
+
+            snippets = citation_val.get("snippets", ["No highlights available"])
+            snippets_text = "\n\n".join(snippets).replace("$", "\\$")
+            st.markdown(f"**Highlights:**\n\n {snippets_text}")
         else:
             st.markdown("**No references available**")
 
@@ -122,11 +143,12 @@ class UIComponents:
                 article_text.find("Write the lead section:")
                 + len("Write the lead section:") :
             ]
-        if article_text[0] == "#":
+        if article_text and article_text[0] == "#":
             article_text = "\n".join(article_text.split("\n")[1:])
-        article_text = DemoTextProcessingHelper.add_inline_citation_link(
-            article_text, citation_dict
-        )
+        if citation_dict:
+            article_text = DemoTextProcessingHelper.add_inline_citation_link(
+                article_text, citation_dict
+            )
         # '$' needs to be changed to '\$' to avoid being interpreted as LaTeX in st.markdown()
         article_text = article_text.replace("$", "\\$")
         UIComponents.from_markdown(article_text, table_content_sidebar)
@@ -218,6 +240,61 @@ class UIComponents:
             "".join([char if char.isalnum() else "-" for char in s]).strip("-").lower()
         )
         return normalized
+
+    @staticmethod
+    def get_custom_css():
+        current_theme = st.session_state.current_theme
+        return f"""
+        <style>
+            h1 {{ font-size: 28px; color: {current_theme['textColor']}; }}
+            h2 {{ font-size: 24px; color: {current_theme['textColor']}; }}
+            h3 {{ font-size: 22px; color: {current_theme['textColor']}; }}
+            h4 {{ font-size: 20px; color: {current_theme['textColor']}; }}
+            h5 {{ font-size: 18px; color: {current_theme['textColor']}; }}
+            p {{ font-size: 18px; color: {current_theme['textColor']}; }}
+            a.toc {{ color: {current_theme['textColor']}; text-decoration: none; }}
+            [data-testid="stExpander"] {{
+                border-color: {current_theme['primaryColor']} !important;
+            }}
+            .st-primary-button > button {{
+                width: 100%;
+                font-size: 14px;
+                padding: 5px 10px;
+            }}
+            .article-container {{
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }}
+            .article-content {{
+                flex-grow: 1;
+            }}
+            .button-container {{
+                display: flex;
+                justify-content: flex-end;
+            }}
+            .small-font {{
+                font-size: 14px;
+                margin: 0px;
+                padding: 0px;
+            }}
+            /* New style for secondary buttons */
+            button[kind="secondary"],
+            button[data-testid="baseButton-secondary"] {{
+                background-color: {current_theme['sidebarBackgroundColor']} !important;
+                color: {current_theme['primaryColor']} !important;
+                border: 0px;
+            }}
+            /* Ensure button text is always visible */
+            .stButton > button > div > p {{
+                color: inherit !important;
+            }}
+        </style>
+        """
+
+    @staticmethod
+    def apply_custom_css():
+        st.markdown(UIComponents.get_custom_css(), unsafe_allow_html=True)
 
 
 class StreamlitCallbackHandler(BaseCallbackHandler):

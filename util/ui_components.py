@@ -260,6 +260,9 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
     def __init__(self, status_container):
         self.status_container = status_container
 
+    def on_information_gathering_start(self, message, **kwargs):
+        self.status_container.info(message)
+
     def on_identify_perspective_start(self, **kwargs):
         self.status_container.info(
             "Start identifying different perspectives for researching the topic."
@@ -271,9 +274,6 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
             f"Finish identifying perspectives. Will now start gathering information"
             f" from the following perspectives:\n- {perspective_list}"
         )
-
-    def on_information_gathering_start(self, **kwargs):
-        self.status_container.info("Start browsing the Internet.")
 
     def on_dialogue_turn_end(self, dlg_turn, **kwargs):
         urls = list(set([r.url for r in dlg_turn.search_results]))
@@ -302,8 +302,8 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
 
     def on_direct_outline_generation_end(self, outline: str, **kwargs):
         self.status_container.success(
-            f"Finish leveraging the internal knowledge of the large language model."
+            "Finish leveraging the internal knowledge of the large language model."
         )
 
     def on_outline_refinement_end(self, outline: str, **kwargs):
-        self.status_container.success(f"Finish leveraging the collected information.")
+        self.status_container.success("Finish leveraging the collected information.")

@@ -9,9 +9,10 @@ from util.theme_manager import load_and_apply_theme
 from pages_util.Settings import (
     load_search_options,
     save_search_options,
-    SEARCH_ENGINES,
     load_llm_settings,
     save_llm_settings,
+    list_downloaded_models,
+    SEARCH_ENGINES,
     LLM_MODELS,
 )
 from .Settings import list_downloaded_models
@@ -47,6 +48,7 @@ def initialize_session_state():
 
 def display_article_form():
     st.header("Create New Article")
+    categories = FileIOHelper.load_categories()
     with st.form(key="search_form"):
         selected_category = st.selectbox("Select category", categories, index=0)
         st.text_input(
@@ -96,6 +98,25 @@ def display_sidebar_options():
     st.sidebar.header("LLM Options")
     llm_settings = load_llm_settings()
     primary_model, fallback_model, model_settings = display_llm_options(llm_settings)
+
+    # Save search options if they have changed
+    if (
+        primary_engine != search_options["primary_engine"]
+        or fallback_engine != search_options["fallback_engine"]
+        or search_top_k != search_options["search_top_k"]
+        or retrieve_top_k != search_options["retrieve_top_k"]
+    ):
+        save_search_options(
+            primary_engine, fallback_engine, search_top_k, retrieve_top_k
+        )
+
+    # Save LLM settings if they have changed
+    if (
+        primary_model != llm_settings["primary_model"]
+        or fallback_model != llm_settings["fallback_model"]
+        or model_settings != llm_settings["model_settings"]
+    ):
+        save_llm_settings(primary_model, fallback_model, model_settings)
 
     return {
         "search_options": {
@@ -156,7 +177,7 @@ def display_llm_options(llm_settings):
         key="primary_model",
     )
     if primary_model == "ollama":
-        display_ollama_options(llm_settings)
+        llm_settings["model_settings"] = display_ollama_options(llm_settings)
 
     fallback_model_options = [None] + [
         model for model in LLM_MODELS.keys() if model != primary_model
@@ -190,6 +211,7 @@ def display_ollama_options(llm_settings):
     )
     llm_settings["model_settings"]["ollama"]["model"] = selected_ollama_model
     llm_settings["model_settings"]["ollama"]["max_tokens"] = max_tokens
+    return llm_settings["model_settings"]
 
 
 def run_storm_process(status, progress_bar, progress_text):
@@ -337,7 +359,7 @@ def cleanup_folder(current_working_dir):
 def create_new_article_page():
     load_and_apply_theme()
     initialize_session_state()
-    categories = FileIOHelper.load_categories()
+
     if st.session_state["page3_write_article_state"] == "not started":
         submit_button, selected_category = display_article_form()
         handle_form_submission(submit_button, selected_category)

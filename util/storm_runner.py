@@ -79,19 +79,20 @@ def add_examples_to_runner(runner):
     ]
 
 
+def log_progress(callback_handler, message: str):
+    st.info(message)
+    logger.info(message)
+    if callback_handler:
+        callback_handler.on_information_gathering_start(message=message)
+
+
 def run_storm_with_fallback(
     topic: str,
     current_working_dir: str,
     callback_handler=None,
     runner=None,
 ):
-    def log_progress(message: str):
-        st.info(message)
-        logger.info(message)
-        if callback_handler:
-            callback_handler.on_information_gathering_start(message=message)
-
-    log_progress("Starting STORM process...")
+    log_progress(callback_handler, "Starting STORM process...")
 
     if runner is None:
         raise ValueError("Runner is not initialized")
@@ -210,24 +211,24 @@ def run_storm_with_config(
     current_working_dir: str,
     callback_handler=None,
 ):
+    progress_placeholder = st.empty()
+
+    def update_progress(message):
+        progress_placeholder.write(message)
+        if callback_handler:
+            callback_handler.on_information_gathering_start(message=message)
+        logger.info(message)
+
+    update_progress("Loading configurations...")
     llm_settings = load_llm_settings()
+    search_options = load_search_options()
+
+    update_progress("Setting up LLM...")
     primary_model = llm_settings["primary_model"]
     fallback_model = llm_settings["fallback_model"]
     model_settings = llm_settings["model_settings"]
-
-    search_options = load_search_options()
     search_top_k = search_options["search_top_k"]
     retrieve_top_k = search_options["retrieve_top_k"]
-    if primary_model is None or fallback_model is None or model_settings is None:
-        llm_settings = load_llm_settings()
-        primary_model = llm_settings["primary_model"]
-        fallback_model = llm_settings["fallback_model"]
-        model_settings = llm_settings["model_settings"]
-
-    if search_top_k is None or retrieve_top_k is None:
-        search_options = load_search_options()
-        search_top_k = search_options["search_top_k"]
-        retrieve_top_k = search_options["retrieve_top_k"]
 
     llm_configs = STORMWikiLMConfigs()
 
@@ -247,6 +248,7 @@ def run_storm_with_config(
     ]:
         getattr(llm_configs, f"set_{lm_type}_lm")(primary_lm)
 
+    update_progress("Setting up search engine...")
     engine_args = STORMWikiRunnerArguments(
         output_dir=current_working_dir,
         max_conv_turn=3,
@@ -255,18 +257,20 @@ def run_storm_with_config(
         retrieve_top_k=retrieve_top_k,
     )
 
-    # Set up the search engine with only max_results
     rm = CombinedSearchAPI(max_results=engine_args.search_top_k)
 
+    update_progress("Initializing STORM runner...")
     runner = STORMWikiRunner(engine_args, llm_configs, rm)
-
-    # Add this line to ensure engine_args is accessible
     runner.engine_args = engine_args
 
     add_examples_to_runner(runner)
-    return run_storm_with_fallback(
+
+    result = run_storm_with_fallback(
         topic, current_working_dir, callback_handler, runner=runner
     )
+
+    update_progress("STORM process completed.")
+    return result
 
 
 def set_storm_runner():

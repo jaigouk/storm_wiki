@@ -217,7 +217,6 @@ def load_search_options():
 
     if result:
         stored_options = json.loads(result[0])
-        # Update default options with stored values, keeping default for missing keys
         default_options.update(stored_options)
 
     return default_options

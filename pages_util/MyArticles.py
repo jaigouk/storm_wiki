@@ -2,14 +2,20 @@ import os
 import logging
 import streamlit as st
 from util.file_io import FileIOHelper
-from util.ui_components import UIComponents
+from util.ui_components import UIComponents, StreamlitCallbackHandler
 from util.theme_manager import load_and_apply_theme, get_my_articles_css
 from pages_util.Settings import (
+    load_search_options,
+    save_search_options,
+    load_llm_settings,
+    save_llm_settings,
     load_categories,
+    save_categories,
     load_general_settings,
     save_general_settings,
-    save_categories,
 )
+
+from util.storm_runner import run_storm_with_config
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -139,41 +145,51 @@ def my_articles_page():
     st.title("My Articles")
 
     if "page2_selected_my_article" in st.session_state:
-        category, article_key = st.session_state.page2_selected_my_article
-        selected_article_file_path_dict = st.session_state.user_articles[category][
-            article_key
-        ]
-        UIComponents.display_article_page(
-            article_key,
-            selected_article_file_path_dict,
-            show_title=True,
-            show_main_article=True,
-            show_feedback_form=False,
-            show_qa_panel=False,
-        )
-        if st.button("Back to Article List"):
-            del st.session_state.page2_selected_my_article
-            st.rerun()
+        display_selected_article()
     else:
-        # Sidebar controls - only show when listing articles
-        with st.sidebar:
-            category_options = ["All Categories"] + list(
-                st.session_state.user_articles.keys()
-            )
-            st.session_state.selected_category = st.selectbox(
-                "Select Category", category_options
-            )
-            st.session_state.page_size = st.selectbox(
-                "Items per page", [12, 24, 48, 96], index=1
-            )
-            st.session_state.num_columns = st.number_input(
-                "Number of columns",
-                min_value=1,
-                max_value=4,
-                value=st.session_state.num_columns,
-            )
+        display_article_list_and_controls()
 
-        display_article_list(st.session_state.page_size, st.session_state.num_columns)
+
+def display_selected_article():
+    category, article_key = st.session_state.page2_selected_my_article
+    selected_article_file_path_dict = st.session_state.user_articles[category][
+        article_key
+    ]
+    UIComponents.display_article_page(
+        article_key,
+        selected_article_file_path_dict,
+        show_title=True,
+        show_main_article=True,
+        show_feedback_form=False,
+        show_qa_panel=False,
+    )
+    if st.button("Back to Article List"):
+        del st.session_state.page2_selected_my_article
+        st.rerun()
+
+
+def display_article_list_and_controls():
+    st.subheader("Article List")
+
+    # Sidebar controls
+    with st.sidebar:
+        category_options = ["All Categories"] + list(
+            st.session_state.user_articles.keys()
+        )
+        st.session_state.selected_category = st.selectbox(
+            "Select Category", category_options
+        )
+        st.session_state.page_size = st.selectbox(
+            "Items per page", [12, 24, 48, 96], index=1
+        )
+        st.session_state.num_columns = st.number_input(
+            "Number of columns",
+            min_value=1,
+            max_value=4,
+            value=st.session_state.num_columns,
+        )
+
+    display_article_list(st.session_state.page_size, st.session_state.num_columns)
 
     # Save the number of columns setting
     general_settings = load_general_settings()

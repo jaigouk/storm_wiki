@@ -15,7 +15,6 @@ from pages_util.Settings import (
     SEARCH_ENGINES,
     LLM_MODELS,
 )
-from .Settings import list_downloaded_models
 
 categories = FileIOHelper.load_categories()
 

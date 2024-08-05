@@ -61,6 +61,11 @@ streamlit run storm.py --server.port 8501 --server.address 0.0.0.0
 
 ```
 
+## migrating existing articles with category
+```sh
+python -m util.migrate_articles
+```
+
 ## Customization
 
 Modify `set_storm_runner()` in `demo_util.py` to customize STORMWikiRunner settings. Refer to the [main STORM repository](https://github.com/stanford-oval/storm) for detailed customization options.

@@ -1,13 +1,31 @@
+import os
 import logging
-import re
 import streamlit as st
-import math
-from util.file_io import DemoFileIOHelper
-from util.path_utils import get_output_dir
+from util.file_io import FileIOHelper
 from util.ui_components import UIComponents
 from util.theme_manager import load_and_apply_theme, get_my_articles_css
+from pages_util.Settings import (
+    load_categories,
+    load_general_settings,
+    save_general_settings,
+    save_categories,
+)
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+def ensure_default_categories():
+    categories = load_categories()
+    default_categories = ["Default", "Uncategorized"]
+
+    for category in default_categories:
+        if category not in categories:
+            categories.append(category)
+            local_dir = FileIOHelper.get_output_dir(category)
+            os.makedirs(local_dir, exist_ok=True)
+
+    save_categories(categories)
+    return categories
 
 
 def initialize_session_state():
@@ -15,116 +33,144 @@ def initialize_session_state():
         st.session_state.page_size = 24
     if "current_page" not in st.session_state:
         st.session_state.current_page = 1
+    if "selected_category" not in st.session_state:
+        st.session_state.selected_category = "All Categories"
+    if "num_columns" not in st.session_state:
+        general_settings = load_general_settings()
+        st.session_state.num_columns = general_settings.get("num_columns", 3)
+
+    # Ensure default categories exist
+    categories = ensure_default_categories()
+
+    # Initialize user_articles if it doesn't exist
+    if "user_articles" not in st.session_state:
+        st.session_state.user_articles = {}
+        for category in categories:
+            local_dir = FileIOHelper.get_output_dir(category)
+            st.session_state.user_articles[category] = (
+                FileIOHelper.read_structure_to_dict(local_dir)
+            )
 
 
-def update_page_size():
-    st.session_state.page_size = st.session_state.page_size_select
-    st.session_state.current_page = 1
-    st.session_state.need_rerun = True
+def get_all_articles():
+    all_articles = {}
+    for category, articles in st.session_state.user_articles.items():
+        for article_key, article_data in articles.items():
+            all_articles[f"{category}/{article_key}"] = article_data
+    return all_articles
 
 
-def display_selected_article():
-    selected_article_name = st.session_state.page2_selected_my_article
-    selected_article_file_path_dict = st.session_state.user_articles[
-        selected_article_name
-    ]
+def display_article_list(page_size, num_columns):
+    if st.session_state.selected_category == "All Categories":
+        articles = get_all_articles()
+    else:
+        articles = st.session_state.user_articles[st.session_state.selected_category]
 
-    UIComponents.display_article_page(
-        selected_article_name=selected_article_name.replace("_", " "),
-        selected_article_file_path_dict=selected_article_file_path_dict,
-        show_title=True,
-        show_main_article=True,
-        show_feedback_form=False,
-        show_qa_panel=False,
-    )
-
-    if st.button("Back to Article List"):
-        del st.session_state.page2_selected_my_article
-        st.rerun()
-
-
-def display_article_list(page_size):
-    current_theme = load_and_apply_theme()
-    articles = st.session_state.user_articles
     article_keys = list(articles.keys())
     total_articles = len(article_keys)
 
-    num_pages = (total_articles + page_size - 1) // page_size
-    current_page = st.selectbox("Page", range(1, num_pages + 1)) - 1
+    current_page = st.session_state.current_page - 1
     start_idx = current_page * page_size
     end_idx = min(start_idx + page_size, total_articles)
 
-    # Create a 2-column layout
-    cols = st.columns(2)
-
+    cols = st.columns(num_columns)
     for i in range(start_idx, end_idx):
         article_key = article_keys[i]
         article_file_path_dict = articles[article_key]
-
-        with cols[i % 2]:
-            with st.container():
-                # Article card
-                article_name = article_key.replace("_", " ")
-                st.subheader(article_name)
-
-                # Display a preview of the article content
-                article_data = DemoFileIOHelper.assemble_article_data(
-                    article_file_path_dict
-                )
-                if article_data:
-                    # st.write(article_data.keys())
-                    content_preview = article_data.get("short_text", "")
-
-                    st.write(content_preview + "...")
-
+        with cols[i % num_columns]:
+            article_data = FileIOHelper.assemble_article_data(article_file_path_dict)
+            if article_data:
+                if st.session_state.selected_category == "All Categories":
+                    category, article_name = article_key.split("/", 1)
+                    st.subheader(f"{category}: {article_name.replace('_', ' ')}")
+                else:
+                    st.subheader(article_key.replace("_", " "))
+                st.write(article_data.get("short_text", "") + "...")
                 if st.button(
                     "Read More",
-                    type="secondary",
                     key=f"view_{article_key}",
-                    use_container_width=False,
                 ):
-                    st.session_state.page2_selected_my_article = article_key
+                    if st.session_state.selected_category == "All Categories":
+                        category, article_name = article_key.split("/", 1)
+                    else:
+                        category, article_name = (
+                            st.session_state.selected_category,
+                            article_key,
+                        )
+                    st.session_state.page2_selected_my_article = (
+                        category,
+                        article_name,
+                    )
                     st.rerun()
 
+    # Pagination controls
+    total_pages = max(1, (total_articles + page_size - 1) // page_size)
 
-# In your my_articles_page function:
+    if total_articles > page_size:
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("← Previous", disabled=(st.session_state.current_page == 1)):
+                st.session_state.current_page = max(
+                    1, st.session_state.current_page - 1
+                )
+        with col2:
+            if st.button(
+                "Next →", disabled=(st.session_state.current_page == total_pages)
+            ):
+                st.session_state.current_page = min(
+                    total_pages, st.session_state.current_page + 1
+                )
+
+        st.write(f"Page {st.session_state.current_page} of {total_pages}")
+    else:
+        st.write(f"Showing all {total_articles} articles")
+
+
 def my_articles_page():
     initialize_session_state()
     current_theme = load_and_apply_theme()
     st.markdown(get_my_articles_css(current_theme), unsafe_allow_html=True)
 
-    if "user_articles" not in st.session_state:
-        local_dir = get_output_dir()
-        st.session_state.user_articles = DemoFileIOHelper.read_structure_to_dict(
-            local_dir
-        )
-
-    if "page_size" not in st.session_state:
-        st.session_state.page_size = 12  # Default page size
-
-    if "page2_selected_my_article" not in st.session_state:
-        page_size_options = [12, 24, 48, 96]
-        selected_page_size = st.selectbox(
-            "Items per page",
-            page_size_options,
-            index=page_size_options.index(st.session_state.page_size),
-        )
-
-        if selected_page_size != st.session_state.page_size:
-            st.session_state.page_size = selected_page_size
+    st.title("My Articles")
 
     if "page2_selected_my_article" in st.session_state:
-        selected_article_name = st.session_state.page2_selected_my_article
-        selected_article_file_path_dict = st.session_state.user_articles[
-            selected_article_name
+        category, article_key = st.session_state.page2_selected_my_article
+        selected_article_file_path_dict = st.session_state.user_articles[category][
+            article_key
         ]
         UIComponents.display_article_page(
-            selected_article_name,
+            article_key,
             selected_article_file_path_dict,
             show_title=True,
             show_main_article=True,
             show_feedback_form=False,
             show_qa_panel=False,
         )
+        if st.button("Back to Article List"):
+            del st.session_state.page2_selected_my_article
+            st.rerun()
     else:
-        display_article_list(page_size=st.session_state.page_size)
+        # Sidebar controls - only show when listing articles
+        with st.sidebar:
+            category_options = ["All Categories"] + list(
+                st.session_state.user_articles.keys()
+            )
+            st.session_state.selected_category = st.selectbox(
+                "Select Category", category_options
+            )
+            st.session_state.page_size = st.selectbox(
+                "Items per page", [12, 24, 48, 96], index=1
+            )
+            st.session_state.num_columns = st.number_input(
+                "Number of columns",
+                min_value=1,
+                max_value=4,
+                value=st.session_state.num_columns,
+            )
+
+        display_article_list(st.session_state.page_size, st.session_state.num_columns)
+
+    # Save the number of columns setting
+    general_settings = load_general_settings()
+    general_settings["num_columns"] = st.session_state.num_columns
+    save_general_settings(general_settings)

@@ -3,11 +3,19 @@ import os
 from dotenv import load_dotenv
 
 from util.phoenix_setup import setup_phoenix
-from pages_util import MyArticles, CreateNewArticle, Settings
 from streamlit_option_menu import option_menu
 from util.theme_manager import init_db, load_and_apply_theme, get_option_menu_style
+from pages_util.MyArticles import my_articles_page
+from pages_util.CreateNewArticle import create_new_article_page
+from pages_util.Settings import settings_page
 
 load_dotenv()
+
+# Set STREAMLIT_OUTPUT_DIR if not already set
+if "STREAMLIT_OUTPUT_DIR" not in os.environ:
+    os.environ["STREAMLIT_OUTPUT_DIR"] = os.path.join(
+        os.path.dirname(__file__), "output"
+    )
 
 # Set page config first
 st.set_page_config(layout="wide")
@@ -90,7 +98,7 @@ def main():
         if menu_selection == "Settings":
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown("### Settings Section")
-            settings_options = ["Search", "Theme", "Ollama"]
+            settings_options = ["General", "Search", "Theme", "LLM", "Categories"]
             selected_setting = option_menu(
                 menu_title=None,
                 options=settings_options,
@@ -106,12 +114,12 @@ def main():
     # Display the selected page
     if menu_selection == "My Articles":
         clear_other_page_session_state(page_index=2)
-        MyArticles.my_articles_page()
+        my_articles_page()
     elif menu_selection == "Create New Article":
         clear_other_page_session_state(page_index=3)
-        CreateNewArticle.create_new_article_page()
+        create_new_article_page()
     elif menu_selection == "Settings":
-        Settings.settings_page(st.session_state.selected_setting)
+        settings_page(st.session_state.selected_setting)
 
     # Update selected_page in session state
     st.session_state["selected_page"] = pages.index(menu_selection)

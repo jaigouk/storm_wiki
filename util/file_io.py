@@ -4,21 +4,76 @@ import json
 import base64
 import datetime
 import pytz
+import sqlite3
 from typing import Dict, Any, Optional, List
 from .shared_utils import parse
 
 
-class DemoFileIOHelper:
+class FileIOHelper:
+    @staticmethod
+    def get_output_dir(category: str = "Default") -> str:
+        base_dir = FileIOHelper.load_output_base_dir()
+        output_dir = os.path.join(base_dir, category)
+        os.makedirs(output_dir, exist_ok=True)
+        return output_dir
+
+    @staticmethod
+    def load_output_base_dir() -> str:
+        conn = sqlite3.connect("settings.db")
+        c = conn.cursor()
+        c.execute("SELECT value FROM settings WHERE key='output_dir'")
+        result = c.fetchone()
+        conn.close()
+        return (
+            result[0]
+            if result
+            else os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
+        )
+
+    @staticmethod
+    def save_output_base_dir(output_dir: str) -> None:
+        conn = sqlite3.connect("settings.db")
+        c = conn.cursor()
+        c.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("output_dir", output_dir),
+        )
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def load_categories() -> List[str]:
+        conn = sqlite3.connect("settings.db")
+        c = conn.cursor()
+        c.execute("SELECT value FROM settings WHERE key='categories'")
+        result = c.fetchone()
+        conn.close()
+        return json.loads(result[0]) if result else ["Default"]
+
+    @staticmethod
+    def save_categories(categories: List[str]) -> None:
+        conn = sqlite3.connect("settings.db")
+        c = conn.cursor()
+        c.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("categories", json.dumps(categories)),
+        )
+        conn.commit()
+        conn.close()
+
     @staticmethod
     def read_structure_to_dict(articles_root_path: str) -> Dict[str, Dict[str, str]]:
         articles_dict = {}
-        for topic_name in os.listdir(articles_root_path):
-            topic_path = os.path.join(articles_root_path, topic_name)
-            if os.path.isdir(topic_path):
-                articles_dict[topic_name] = {}
-                for file_name in os.listdir(topic_path):
-                    file_path = os.path.join(topic_path, file_name)
-                    articles_dict[topic_name][file_name] = os.path.abspath(file_path)
+        if os.path.exists(articles_root_path):
+            for topic_name in os.listdir(articles_root_path):
+                topic_path = os.path.join(articles_root_path, topic_name)
+                if os.path.isdir(topic_path):
+                    articles_dict[topic_name] = {}
+                    for file_name in os.listdir(topic_path):
+                        file_path = os.path.join(topic_path, file_name)
+                        articles_dict[topic_name][file_name] = os.path.abspath(
+                            file_path
+                        )
         return articles_dict
 
     @staticmethod
@@ -104,7 +159,7 @@ class DemoFileIOHelper:
 
         try:
             # Read the article content
-            article_content = DemoFileIOHelper.read_txt_file(
+            article_content = FileIOHelper.read_txt_file(
                 article_file_path_dict[article_file]
             )
 
@@ -129,8 +184,8 @@ class DemoFileIOHelper:
             if "url_to_info.json" in article_file_path_dict:
                 try:
                     article_data["citations"] = (
-                        DemoFileIOHelper._construct_citation_dict_from_search_result(
-                            DemoFileIOHelper.read_json_file(
+                        FileIOHelper._construct_citation_dict_from_search_result(
+                            FileIOHelper.read_json_file(
                                 article_file_path_dict["url_to_info.json"]
                             )
                         )
@@ -141,7 +196,7 @@ class DemoFileIOHelper:
             # Add conversation log if available
             if "conversation_log.json" in article_file_path_dict:
                 try:
-                    conversation_log = DemoFileIOHelper.read_json_file(
+                    conversation_log = FileIOHelper.read_json_file(
                         article_file_path_dict["conversation_log.json"]
                     )
                     # Map agent numbers to names

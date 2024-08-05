@@ -89,6 +89,11 @@ def display_article_list(page_size, num_columns):
                 if st.button(
                     "Read More",
                     key=f"view_{article_key}",
+                    # Add this line to include the custom CSS class
+                    use_container_width=False,
+                    type="secondary",
+                    # Add the custom CSS class
+                    help="Click to read the full article",
                 ):
                     if st.session_state.selected_category == "All Categories":
                         category, article_name = article_key.split("/", 1)
@@ -129,7 +134,7 @@ def display_article_list(page_size, num_columns):
 def my_articles_page():
     initialize_session_state()
     current_theme = load_and_apply_theme()
-    st.markdown(get_my_articles_css(current_theme), unsafe_allow_html=True)
+    UIComponents.apply_custom_css()
 
     st.title("My Articles")
 

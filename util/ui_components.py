@@ -5,6 +5,7 @@ from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
 import unidecode
 import logging
 import os
+from util.theme_manager import get_global_css, get_my_articles_css
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -249,59 +250,10 @@ class UIComponents:
         return normalized
 
     @staticmethod
-    def get_custom_css():
-        current_theme = st.session_state.current_theme
-        return f"""
-        <style>
-            h1 {{ font-size: 28px; color: {current_theme['textColor']}; }}
-            h2 {{ font-size: 24px; color: {current_theme['textColor']}; }}
-            h3 {{ font-size: 22px; color: {current_theme['textColor']}; }}
-            h4 {{ font-size: 20px; color: {current_theme['textColor']}; }}
-            h5 {{ font-size: 18px; color: {current_theme['textColor']}; }}
-            p {{ font-size: 18px; color: {current_theme['textColor']}; }}
-            a.toc {{ color: {current_theme['textColor']}; text-decoration: none; }}
-            [data-testid="stExpander"] {{
-                border-color: {current_theme['primaryColor']} !important;
-            }}
-            .st-primary-button > button {{
-                width: 100%;
-                font-size: 14px;
-                padding: 5px 10px;
-            }}
-            .article-container {{
-                display: flex;
-                flex-direction: column;
-                height: 100%;
-            }}
-            .article-content {{
-                flex-grow: 1;
-            }}
-            .button-container {{
-                display: flex;
-                justify-content: flex-end;
-            }}
-            .small-font {{
-                font-size: 14px;
-                margin: 0px;
-                padding: 0px;
-            }}
-            /* New style for secondary buttons */
-            button[kind="secondary"],
-            button[data-testid="baseButton-secondary"] {{
-                background-color: {current_theme['sidebarBackgroundColor']} !important;
-                color: {current_theme['primaryColor']} !important;
-                border: 0px;
-            }}
-            /* Ensure button text is always visible */
-            .stButton > button > div > p {{
-                color: inherit !important;
-            }}
-        </style>
-        """
-
-    @staticmethod
     def apply_custom_css():
-        st.markdown(UIComponents.get_custom_css(), unsafe_allow_html=True)
+        current_theme = st.session_state.current_theme
+        st.markdown(get_global_css(current_theme), unsafe_allow_html=True)
+        st.markdown(get_my_articles_css(current_theme), unsafe_allow_html=True)
 
 
 class StreamlitCallbackHandler(BaseCallbackHandler):

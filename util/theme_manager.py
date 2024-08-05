@@ -111,6 +111,15 @@ def load_theme_from_db():
     return dracula_soft_dark.copy()
 
 
+def adjust_color_brightness(hex_color, brightness_offset):
+    # Convert hex to RGB
+    rgb = tuple(int(hex_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+    # Adjust brightness
+    new_rgb = tuple(max(0, min(255, c + brightness_offset)) for c in rgb)
+    # Convert back to hex
+    return "#{:02x}{:02x}{:02x}".format(*new_rgb)
+
+
 def get_contrasting_text_color(hex_color):
     # Convert hex to RGB
     rgb = tuple(int(hex_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
@@ -173,16 +182,50 @@ def get_theme_css(theme):
     }}
 
     /* Buttons */
-    .stButton > button,
-    .stButton > button:hover,
-    button[kind="secondaryFormSubmit"],
-    button[kind="secondaryFormSubmit"]:hover {{
+    .stButton > button {{
+        font-size: 14px;
+        padding: 2px 10px;
+        height: auto;
+        width: auto;
+        background-color: var(--primary-color) !important;
+        color: var(--background-color) !important;
+        border-color: var(--primary-color) !important;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }}
+    .stButton > button:hover {{
+        background-color: {adjust_color_brightness(theme['primaryColor'], -20)} !important;
+        color: var(--background-color) !important;
+    }}
+    .stButton > button > div > p {{
+        color: inherit !important;
+    }}
+
+    /* Sidebar button styles */
+    [data-testid="stSidebar"] .stButton > button {{
+        width: 100%;
+        text-align: left;
+        background-color: transparent !important;
+        color: var(--text-color) !important;
+        border: 1px solid var(--text-color) !important;
+    }}
+    [data-testid="stSidebar"] .stButton > button:hover {{
         background-color: var(--primary-color) !important;
         color: var(--background-color) !important;
         border-color: var(--primary-color) !important;
     }}
-    .stButton > button > div > p,
-    button[kind="secondaryFormSubmit"] > div > p {{
+
+    /* Settings page button styles */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] .stButton > button {{
+        width: 100%;
+        text-align: left;
+        background-color: transparent !important;
+        color: var(--text-color) !important;
+        border: none !important;
+        border-radius: 0;
+    }}
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] .stButton > button:hover {{
+        background-color: var(--primary-color) !important;
         color: var(--background-color) !important;
     }}
 
@@ -294,6 +337,111 @@ def adjust_color_brightness(hex_color, brightness_offset):
     return "#{:02x}{:02x}{:02x}".format(*new_rgb)
 
 
+def get_read_more_button_css(theme):
+    return f"""
+    .stButton.read-more-button > button {{
+        width: auto;
+        height: auto;
+        white-space: normal;
+        word-wrap: break-word;
+        background-color: {theme['secondaryBackgroundColor']} !important;
+        color: {theme['textColor']} !important;
+        border: 1px solid {theme['primaryColor']} !important;
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        float: right;
+        margin-top: 10px;
+    }}
+    .stButton.read-more-button > button:hover {{
+        background-color: {theme['primaryColor']} !important;
+        color: {theme['backgroundColor']} !important;
+    }}
+    """
+
+
+def get_my_articles_css(theme):
+    read_more_button_css = get_read_more_button_css(theme)
+    return f"""
+    <style>
+    .article-card {{
+        background-color: {theme['secondaryBackgroundColor']};
+        color: {theme['textColor']};
+        border: 1px solid {theme['primaryColor']};
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }}
+    .article-card:hover {{
+        background-color: {theme['primaryColor']};
+        color: {theme['backgroundColor']};
+    }}
+    {read_more_button_css}
+    .pagination-container {{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+    }}
+    .pagination-container > div {{
+        margin: 0 10px;
+    }}
+    </style>
+    """
+
+
+def get_global_css(theme):
+    return f"""
+    <style>
+    /* Base styles */
+    .stApp {{
+        background-color: {theme['backgroundColor']};
+        color: {theme['textColor']};
+        font-family: {theme['font']};
+    }}
+
+    /* Sidebar */
+    [data-testid="stSidebar"] {{
+        background-color: {theme['secondaryBackgroundColor']};
+        color: {theme['textColor']};
+    }}
+
+    /* Buttons */
+    .stButton > button {{
+        background-color: {theme['primaryColor']};
+        color: {theme['backgroundColor']};
+        border: none;
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }}
+    .stButton > button:hover {{
+        background-color: {adjust_color_brightness(theme['primaryColor'], -20)};
+    }}
+
+    /* Sidebar button styles */
+    [data-testid="stSidebar"] .stButton > button {{
+        background-color: transparent;
+        color: {theme['textColor']};
+        border: 1px solid {theme['textColor']};
+    }}
+    [data-testid="stSidebar"] .stButton > button:hover {{
+        background-color: {theme['primaryColor']};
+        color: {theme['backgroundColor']};
+        border-color: {theme['primaryColor']};
+    }}
+
+    /* ... (rest of the global CSS) ... */
+    </style>
+    """
+
+
 def load_and_apply_theme():
     if "current_theme" not in st.session_state:
         st.session_state.current_theme = load_theme_from_db()
@@ -336,48 +484,65 @@ def get_preview_html(theme):
     """
 
 
-def get_my_articles_css(theme):
+def get_all_custom_css(theme):
     return f"""
     <style>
-    .article-card {{
+    /* Read More button styles */
+    .stButton>button {{
+        width: auto;
+        height: auto;
+        white-space: normal;
+        word-wrap: break-word;
         background-color: {theme['sidebarBackgroundColor']};
-        color: {theme['textColor']};
+        color: {theme['primaryColor']};
         border: 1px solid {theme['primaryColor']};
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 10px;
-        height: 100px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 4px;
         transition: all 0.3s ease;
+        float: right;
+        margin-top: 10px;
     }}
-    .article-card:hover {{
+    .stButton>button:hover {{
         background-color: {theme['primaryColor']};
         color: {theme['backgroundColor']};
     }}
-    .stButton>button {{
+
+    /* Additional custom CSS */
+    .st-primary-button > button {{
         width: 100%;
-        height: 100%;
-        white-space: normal;
-        word-wrap: break-word;
-        background-color: transparent;
-        border: none;
-        padding: 0;
+        font-size: 14px;
+        padding: 5px 10px;
     }}
-    .stButton>button:hover {{
-        background-color: transparent;
-        color: inherit;
-    }}
-    .pagination-container {{
+    .article-container {{
         display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 20px;
+        flex-direction: column;
+        height: 100%;
     }}
-    .pagination-container > div {{
-        margin: 0 10px;
+    .article-content {{
+        flex-grow: 1;
+    }}
+    .button-container {{
+        display: flex;
+        justify-content: flex-end;
+    }}
+    .small-font {{
+        font-size: 14px;
+        margin: 0px;
+        padding: 0px;
+    }}
+
+    /* New style for secondary buttons */
+    button[kind="secondary"],
+    button[data-testid="baseButton-secondary"] {{
+        background-color: {theme['sidebarBackgroundColor']} !important;
+        color: {theme['primaryColor']} !important;
+        border: 0px;
+    }}
+
+    /* Ensure button text is always visible */
+    .stButton > button > div > p {{
+        color: inherit !important;
     }}
     </style>
     """

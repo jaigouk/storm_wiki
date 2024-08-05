@@ -139,7 +139,7 @@ def display_article_list(page_size, num_columns):
 
 def my_articles_page():
     initialize_session_state()
-    current_theme = load_and_apply_theme()
+    load_and_apply_theme()
     UIComponents.apply_custom_css()
 
     st.title("My Articles")
@@ -147,6 +147,22 @@ def my_articles_page():
     if "page2_selected_my_article" in st.session_state:
         display_selected_article()
     else:
+        # Move the category selection to the sidebar
+        with st.sidebar:
+            category_options = ["All Categories"] + list(
+                st.session_state.user_articles.keys()
+            )
+            selected_category = st.selectbox(
+                "Select Category", category_options, key="category_selector"
+            )
+
+        # Update the selected category in session state
+        if selected_category != st.session_state.selected_category:
+            st.session_state.selected_category = selected_category
+            st.session_state.current_page = (
+                1  # Reset to first page when category changes
+            )
+
         display_article_list_and_controls()
 
 
@@ -173,12 +189,6 @@ def display_article_list_and_controls():
 
     # Sidebar controls
     with st.sidebar:
-        category_options = ["All Categories"] + list(
-            st.session_state.user_articles.keys()
-        )
-        st.session_state.selected_category = st.selectbox(
-            "Select Category", category_options
-        )
         st.session_state.page_size = st.selectbox(
             "Items per page", [12, 24, 48, 96], index=1
         )

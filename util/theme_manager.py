@@ -7,7 +7,7 @@ dracula_soft_dark = {
     "backgroundColor": "#282a36",
     "secondaryBackgroundColor": "#44475a",
     "textColor": "#C0C0D0",
-    "sidebarBackgroundColor": "#444759",
+    "sidebarBackgroundColor": "#44475a",
     "sidebarTextColor": "#C0C0D0",
     "font": "sans serif",
 }
@@ -17,7 +17,7 @@ tokyo_night = {
     "backgroundColor": "#1a1b26",
     "secondaryBackgroundColor": "#24283b",
     "textColor": "#a9b1d6",
-    "sidebarBackgroundColor": "#16161e",
+    "sidebarBackgroundColor": "#24283b",
     "sidebarTextColor": "#565f89",
     "font": "sans serif",
 }
@@ -27,7 +27,7 @@ github_dark = {
     "backgroundColor": "#0d1117",
     "secondaryBackgroundColor": "#161b22",
     "textColor": "#c9d1d9",
-    "sidebarBackgroundColor": "#090c10",
+    "sidebarBackgroundColor": "#161b22",
     "sidebarTextColor": "#8b949e",
     "font": "sans serif",
 }
@@ -37,7 +37,7 @@ github_light = {
     "backgroundColor": "#ffffff",
     "secondaryBackgroundColor": "#f6f8fa",
     "textColor": "#24292f",
-    "sidebarBackgroundColor": "#f0f2f4",
+    "sidebarBackgroundColor": "#f6f8fa",
     "sidebarTextColor": "#57606a",
     "font": "sans serif",
 }
@@ -201,6 +201,18 @@ def get_theme_css(theme):
         color: inherit !important;
     }}
 
+    /* Form submit button styles */
+    .stButton > button[kind="secondaryFormSubmit"],
+    .stButton > button[data-testid="baseButton-secondaryFormSubmit"] {{
+        background-color: var(--primary-color) !important;
+        color: {get_contrasting_text_color(theme['primaryColor'])} !important;
+        border: none !important;
+    }}
+    .stButton > button[kind="secondaryFormSubmit"]:hover,
+    .stButton > button[data-testid="baseButton-secondaryFormSubmit"]:hover {{
+        opacity: 0.8;
+    }}
+
     /* Sidebar button styles */
     [data-testid="stSidebar"] .stButton > button {{
         width: 100%;
@@ -328,25 +340,27 @@ def get_theme_css(theme):
     """
 
 
-def adjust_color_brightness(hex_color, brightness_offset):
-    # Convert hex to RGB
-    rgb = tuple(int(hex_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
-    # Adjust brightness
-    new_rgb = tuple(max(0, min(255, c + brightness_offset)) for c in rgb)
-    # Convert back to hex
-    return "#{:02x}{:02x}{:02x}".format(*new_rgb)
-
-
 def get_read_more_button_css(theme):
+    is_light_theme = is_light_color(theme["backgroundColor"])
+    button_bg_color = (
+        theme["secondaryBackgroundColor"]
+        if is_light_theme
+        else theme["backgroundColor"]
+    )
+    button_text_color = theme["textColor"]
+    button_border_color = theme["primaryColor"]
+    button_hover_bg_color = theme["primaryColor"]
+    button_hover_text_color = get_contrasting_text_color(button_hover_bg_color)
+
     return f"""
     .stButton.read-more-button > button {{
         width: auto;
         height: auto;
         white-space: normal;
         word-wrap: break-word;
-        background-color: {theme['secondaryBackgroundColor']} !important;
-        color: {theme['textColor']} !important;
-        border: 1px solid {theme['primaryColor']} !important;
+        background-color: {button_bg_color} !important;
+        color: {button_text_color} !important;
+        border: 1px solid {button_border_color} !important;
         padding: 5px 10px;
         font-size: 14px;
         border-radius: 4px;
@@ -355,14 +369,32 @@ def get_read_more_button_css(theme):
         margin-top: 10px;
     }}
     .stButton.read-more-button > button:hover {{
-        background-color: {theme['primaryColor']} !important;
-        color: {theme['backgroundColor']} !important;
+        background-color: {button_hover_bg_color} !important;
+        color: {button_hover_text_color} !important;
     }}
     """
 
 
+def is_light_color(hex_color):
+    # Convert hex to RGB
+    rgb = tuple(int(hex_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+    # Calculate luminance
+    luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255
+    return luminance > 0.5
+
+
 def get_my_articles_css(theme):
-    read_more_button_css = get_read_more_button_css(theme)
+    is_light_theme = is_light_color(theme["backgroundColor"])
+    primary_button_bg_color = theme["primaryColor"]
+    primary_button_text_color = get_contrasting_text_color(primary_button_bg_color)
+    secondary_button_bg_color = (
+        theme["secondaryBackgroundColor"]
+        if is_light_theme
+        else theme["backgroundColor"]
+    )
+    secondary_button_text_color = theme["textColor"]
+    secondary_button_border_color = theme["primaryColor"]
+
     return f"""
     <style>
     .article-card {{
@@ -379,9 +411,69 @@ def get_my_articles_css(theme):
     }}
     .article-card:hover {{
         background-color: {theme['primaryColor']};
-        color: {theme['backgroundColor']};
+        color: {get_contrasting_text_color(theme['primaryColor'])};
     }}
-    {read_more_button_css}
+
+    /* Primary button styles */
+    .stButton > button,
+    .stButton > button:hover,
+    .stButton > button:focus,
+    .stButton > button:active {{
+        background-color: {primary_button_bg_color} !important;
+        color: {primary_button_text_color} !important;
+        border: none !important;
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }}
+    .stButton > button:hover {{
+        opacity: 0.8;
+    }}
+
+    /* Secondary button styles */
+    button[kind="secondary"],
+    button[kind="secondaryFormSubmit"],
+    button[data-testid="baseButton-secondary"],
+    button[data-testid="baseButton-secondaryFormSubmit"] {{
+        background-color: {secondary_button_bg_color} !important;
+        color: {secondary_button_text_color} !important;
+        border: 1px solid {secondary_button_border_color} !important;
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }}
+    button[kind="secondary"]:hover,
+    button[kind="secondaryFormSubmit"]:hover,
+    button[data-testid="baseButton-secondary"]:hover,
+    button[data-testid="baseButton-secondaryFormSubmit"]:hover {{
+        background-color: {theme['primaryColor']} !important;
+        color: {get_contrasting_text_color(theme['primaryColor'])} !important;
+    }}
+
+    /* Form submit button styles */
+    .stButton > button[kind="secondaryFormSubmit"],
+    .stButton > button[data-testid="baseButton-secondaryFormSubmit"] {{
+        background-color: {primary_button_bg_color} !important;
+        color: {primary_button_text_color} !important;
+        border: none !important;
+    }}
+    .stButton > button[kind="secondaryFormSubmit"]:hover,
+    .stButton > button[data-testid="baseButton-secondaryFormSubmit"]:hover {{
+        opacity: 0.8;
+    }}
+
+    /* Tooltip styles */
+    .stTooltipIcon {{
+        color: {theme['textColor']} !important;
+    }}
+    .stTooltipContent {{
+        background-color: {theme['secondaryBackgroundColor']} !important;
+        color: {theme['textColor']} !important;
+        border: 1px solid {theme['primaryColor']} !important;
+    }}
+
     .pagination-container {{
         display: flex;
         justify-content: center;
@@ -390,6 +482,49 @@ def get_my_articles_css(theme):
     }}
     .pagination-container > div {{
         margin: 0 10px;
+    }}
+
+    /* Ensure button text is always visible */
+    .stButton > button > div > p {{
+        color: inherit !important;
+    }}
+    </style>
+    """
+
+
+def get_form_submit_button_css(theme):
+    primary_color = theme["primaryColor"]
+    bg_color = theme["backgroundColor"]
+    is_light_theme = is_light_color(bg_color)
+
+    text_color = get_contrasting_text_color(primary_color)
+    hover_bg_color = adjust_color_brightness(
+        primary_color, -30 if is_light_theme else 30
+    )
+    hover_text_color = get_contrasting_text_color(hover_bg_color)
+
+    return f"""
+    <style>
+    div[data-testid="stForm"] .stButton > button {{
+        background-color: {primary_color} !important;
+        color: {text_color} !important;
+        border-color: {primary_color} !important;
+        border-style: solid !important;
+        border-width: 1px !important;
+        border-radius: 4px !important;
+        padding: 0.25rem 0.75rem !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        transition: all 0.3s ease !important;
+    }}
+    div[data-testid="stForm"] .stButton > button:hover {{
+        background-color: {hover_bg_color} !important;
+        color: {hover_text_color} !important;
+        border-color: {hover_bg_color} !important;
+    }}
+    div[data-testid="stForm"] .stButton > button:active {{
+        background-color: {adjust_color_brightness(hover_bg_color, -20)} !important;
+        transform: translateY(2px);
     }}
     </style>
     """

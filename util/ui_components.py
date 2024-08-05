@@ -5,7 +5,11 @@ from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
 import unidecode
 import logging
 import os
-from util.theme_manager import get_global_css, get_my_articles_css
+from util.theme_manager import (
+    get_global_css,
+    get_my_articles_css,
+    get_form_submit_button_css,
+)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -254,6 +258,7 @@ class UIComponents:
         current_theme = st.session_state.current_theme
         st.markdown(get_global_css(current_theme), unsafe_allow_html=True)
         st.markdown(get_my_articles_css(current_theme), unsafe_allow_html=True)
+        st.markdown(get_form_submit_button_css(current_theme), unsafe_allow_html=True)
 
 
 class StreamlitCallbackHandler(BaseCallbackHandler):

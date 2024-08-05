@@ -5,7 +5,7 @@ from util.ui_components import UIComponents, StreamlitCallbackHandler
 from util.file_io import FileIOHelper
 from util.text_processing import convert_txt_to_md
 from util.storm_runner import set_storm_runner, process_search_results
-from util.theme_manager import load_and_apply_theme
+from util.theme_manager import load_and_apply_theme, get_form_submit_button_css
 from pages_util.Settings import (
     load_search_options,
     save_search_options,
@@ -48,6 +48,13 @@ def initialize_session_state():
 def display_article_form():
     st.header("Create New Article")
     categories = FileIOHelper.load_categories()
+
+    # Apply custom CSS for the form submit button
+    st.markdown(
+        get_form_submit_button_css(st.session_state.current_theme),
+        unsafe_allow_html=True,
+    )
+
     with st.form(key="search_form"):
         selected_category = st.selectbox("Select category", categories, index=0)
         st.text_input(
@@ -358,6 +365,7 @@ def cleanup_folder(current_working_dir):
 def create_new_article_page():
     load_and_apply_theme()
     initialize_session_state()
+    UIComponents.apply_custom_css()
 
     if st.session_state["page3_write_article_state"] == "not started":
         submit_button, selected_category = display_article_form()

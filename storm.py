@@ -104,10 +104,11 @@ def main():
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown("### Settings Section")
             settings_options = ["General", "Search", "Theme", "LLM", "Categories"]
+            icons = ["gear", "search", "brush", "robot", "folder-tree"]
             selected_setting = option_menu(
                 menu_title=None,
                 options=settings_options,
-                icons=["gear", "palette", "tools"],
+                icons=icons,
                 menu_icon=None,
                 default_index=0,
                 styles=get_option_menu_style(current_theme),

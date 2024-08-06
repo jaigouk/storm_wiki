@@ -111,11 +111,13 @@ def load_theme_from_db():
     return dracula_soft_dark.copy()
 
 
-def adjust_color_brightness(hex_color, brightness_offset):
+def adjust_color_brightness(hex_color, brightness_factor):
     # Convert hex to RGB
     rgb = tuple(int(hex_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
     # Adjust brightness
-    new_rgb = tuple(max(0, min(255, c + brightness_offset)) for c in rgb)
+    new_rgb = tuple(
+        min(255, max(0, int(c * (1 + brightness_factor / 100)))) for c in rgb
+    )
     # Convert back to hex
     return "#{:02x}{:02x}{:02x}".format(*new_rgb)
 
@@ -138,7 +140,7 @@ def get_option_menu_style(theme):
         },
         "icon": {"color": theme["sidebarTextColor"], "font-size": "16px"},
         "nav-link": {
-            "color": theme["sidebarTextColor"],
+            "color": adjust_color_brightness(theme["sidebarTextColor"], 50),
             "font-size": "16px",
             "text-align": "left",
             "margin": "0px",

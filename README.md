@@ -47,31 +47,34 @@ dark and light themes
 
 ## Installation
 
-1. Clone the repository:
+1. Clone and install dependencies
    ```sh
-   git clone https://github.com/yourusername/storm-minimal-ui.git
-   cd storm-minimal-ui
-   ```
+   git clone https://github.com/jaigouk/storm_wiki.git
+   cd storm_wiki
 
-2. Install dependencies:
-   ```sh
-   pip install -r requirements.txt
    cp .env.example .env
    cp secrets.toml.example ./.streamlit/secrets.toml
+
+   # update .env and secrets.toml with vscode or any other editor
+
+   pip install -r requirements.txt
+   streamlit run storm.py --server.port 8501 --server.address 0.0.0.0
    ```
 
-   edit .env file
-   ```
-   STREAMLIT_OUTPUT_DIR=DEMO_WORKING_DIR
-   OPENAI_API_KEY=YOUR_OPENAI_KEY
-   STORM_TIMEZONE="America/Los_Angeles"
-   ```
+3. Configure search engines
+   1. visit settings menu and click Search settings
+   2. add necessary values. as of now Bing and You search is not usable. but you can use searxng, arxiv, duckduckgo
+   3. choose primary and fallback search engines. Sometimes, duckduckgo or searxng may not return the results because of rate limit.
 
-   also update serecets.toml
+4. Configure LLM
+   1. visit LLM menu and choose primary and fallback LLM
+   2. for ollama, you will be able to see localhost llm list. choose them with max tokens.
+   3. ollama can also fail with various reasons. for that you can choose fallback llm like openai's gpt-4o-mini
 
-3. Set up API keys:
-   - Copy `secrets.toml.example` to `.streamlit/secrets.toml`
-   - Add your API keys to `.streamlit/secrets.toml`
+5. Categories setting
+   1. You can choose output directory. this is the root directory that category folders will be created
+   2. You can edit and delete existing categories. When deleting a category, it will ask which folder to use to move existing articles.
+   3. You can create a new category folder.
 
 ## Usage
 

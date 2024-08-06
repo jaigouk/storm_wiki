@@ -10,9 +10,11 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 import sqlite3
 import json
 
+DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
+
 
 def load_phoenix_settings():
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT value FROM settings WHERE key='phoenix_settings'")
     result = c.fetchone()

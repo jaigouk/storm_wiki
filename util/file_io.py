@@ -8,6 +8,8 @@ import sqlite3
 from typing import Dict, Any, Optional, List
 from .shared_utils import parse
 
+DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
+
 
 class FileIOHelper:
     @staticmethod
@@ -19,7 +21,7 @@ class FileIOHelper:
 
     @staticmethod
     def load_output_base_dir() -> str:
-        conn = sqlite3.connect("settings.db")
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("SELECT value FROM settings WHERE key='output_dir'")
         result = c.fetchone()
@@ -32,7 +34,7 @@ class FileIOHelper:
 
     @staticmethod
     def save_output_base_dir(output_dir: str) -> None:
-        conn = sqlite3.connect("settings.db")
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
@@ -43,7 +45,7 @@ class FileIOHelper:
 
     @staticmethod
     def load_categories() -> List[str]:
-        conn = sqlite3.connect("settings.db")
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
 
         # Create the table if it doesn't exist
@@ -61,7 +63,7 @@ class FileIOHelper:
 
     @staticmethod
     def save_categories(categories: List[str]) -> None:
-        conn = sqlite3.connect("settings.db")
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",

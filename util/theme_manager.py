@@ -1,6 +1,10 @@
 import streamlit as st
 import sqlite3
 import json
+import os
+
+DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
+
 
 dracula_soft_dark = {
     "primaryColor": "#bf96f9",
@@ -76,7 +80,7 @@ light_themes = {
 
 
 def init_db():
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS settings
                  (key TEXT PRIMARY KEY, value TEXT)""")
@@ -85,7 +89,7 @@ def init_db():
 
 
 def save_theme(theme):
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
@@ -96,7 +100,7 @@ def save_theme(theme):
 
 
 def load_theme_from_db():
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT value FROM settings WHERE key='theme'")
     result = c.fetchone()

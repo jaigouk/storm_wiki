@@ -15,6 +15,8 @@ from util.file_io import FileIOHelper
 import shutil
 import os
 
+DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
+
 SEARCH_ENGINES = {
     "searxng": {
         "env_var": "SEARXNG_BASE_URL",
@@ -72,7 +74,7 @@ def save_categories(categories):
 
 
 def load_general_settings():
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT value FROM settings WHERE key='general_settings'")
     result = c.fetchone()
@@ -83,7 +85,7 @@ def load_general_settings():
 
 
 def save_general_settings(settings):
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
@@ -94,7 +96,7 @@ def save_general_settings(settings):
 
 
 def load_phoenix_settings():
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT value FROM settings WHERE key='phoenix_settings'")
     result = c.fetchone()
@@ -109,7 +111,7 @@ def load_phoenix_settings():
 
 
 def save_phoenix_settings(settings):
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
@@ -168,7 +170,7 @@ def get_available_search_engines():
 
 
 def load_search_options():
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT value FROM settings WHERE key='search_options'")
     result = c.fetchone()
@@ -194,7 +196,7 @@ def load_search_options():
 
 
 def save_search_options(**options):
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     existing_options = load_search_options()
     existing_options.update(options)
@@ -207,7 +209,7 @@ def save_search_options(**options):
 
 
 def save_llm_settings(primary_model, fallback_model, model_settings):
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
@@ -227,7 +229,7 @@ def save_llm_settings(primary_model, fallback_model, model_settings):
 
 
 def load_llm_settings():
-    conn = sqlite3.connect("settings.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT value FROM settings WHERE key='llm_settings'")
     result = c.fetchone()

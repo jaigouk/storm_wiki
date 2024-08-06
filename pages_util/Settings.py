@@ -14,13 +14,36 @@ from util.file_io import FileIOHelper
 import shutil
 import os
 
-# Search engine options
 SEARCH_ENGINES = {
-    "searxng": "SEARXNG_BASE_URL",
-    "bing": "BING_SEARCH_API_KEY",
-    "yourdm": "YDC_API_KEY",
-    "duckduckgo": None,
-    "arxiv": None,
+    "searxng": {
+        "env_var": "SEARXNG_BASE_URL",
+        "settings": {
+            "base_url": {"type": "text", "required": True, "label": "SearXNG Base URL"},
+            "api_key": {
+                "type": "password",
+                "required": False,
+                "label": "SearXNG API Key (optional)",
+            },
+        },
+    },
+    "bing": {
+        "env_var": "BING_SEARCH_API_KEY",
+        "settings": {
+            "api_key": {"type": "password", "required": True, "label": "Bing API Key"},
+        },
+    },
+    "yourdm": {
+        "env_var": "YDC_API_KEY",
+        "settings": {
+            "api_key": {
+                "type": "password",
+                "required": True,
+                "label": "YourDM API Key",
+            },
+        },
+    },
+    "duckduckgo": {"env_var": None, "settings": {}},
+    "arxiv": {"env_var": None, "settings": {}},
 }
 
 # LLM model options
@@ -31,6 +54,9 @@ LLM_MODELS = {
 }
 
 
+# ---------------
+# Output Directory
+# ---------------
 def load_output_dir():
     return FileIOHelper.load_output_base_dir()
 
@@ -39,6 +65,9 @@ def save_output_dir(output_dir):
     FileIOHelper.save_output_base_dir(output_dir)
 
 
+# ---------------
+# Article Categories
+# ---------------
 def load_categories():
     return FileIOHelper.load_categories()
 
@@ -177,6 +206,9 @@ def move_category_contents(source_category, target_category):
         shutil.rmtree(source_path)
 
 
+# ---------------
+# General Settings
+# ---------------
 def load_general_settings():
     conn = sqlite3.connect("settings.db")
     c = conn.cursor()
@@ -200,6 +232,85 @@ def save_general_settings(settings):
     conn.close()
 
 
+def load_phoenix_settings():
+    conn = sqlite3.connect("settings.db")
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key='phoenix_settings'")
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        return json.loads(result[0])
+    return {
+        "project_name": "storm-wiki",
+        "enabled": False,
+        "collector_endpoint": "localhost:6006",
+    }
+
+
+def save_phoenix_settings(settings):
+    conn = sqlite3.connect("settings.db")
+    c = conn.cursor()
+    c.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+        ("phoenix_settings", json.dumps(settings)),
+    )
+    conn.commit()
+    conn.close()
+
+
+# ------------------------
+# Search and LLM Settings
+# ------------------------
+def get_engine_specific_settings(engine, current_settings={}):
+    settings = {}
+    if engine in SEARCH_ENGINES and "settings" in SEARCH_ENGINES[engine]:
+        for key, config in SEARCH_ENGINES[engine]["settings"].items():
+            input_type = config.get("type", "text")
+            if input_type == "text":
+                settings[key] = st.text_input(
+                    config["label"],
+                    value=current_settings.get(key, ""),
+                    key=f"{engine}_{key}",
+                )
+            elif input_type == "password":
+                settings[key] = st.text_input(
+                    config["label"],
+                    value=current_settings.get(key, ""),
+                    type="password",
+                    key=f"{engine}_{key}",
+                )
+    return settings
+
+
+def get_available_search_engines():
+    available_engines = {}
+    search_options = load_search_options()
+    engine_settings = search_options.get("engine_settings", {})
+
+    for engine, config in SEARCH_ENGINES.items():
+        if config["env_var"] is None:
+            available_engines[engine] = None
+        elif engine in config.get("settings", {}):
+            required_settings = [
+                key
+                for key, setting in config["settings"].items()
+                if setting.get("required", False)
+            ]
+            if all(
+                engine_settings.get(engine, {}).get(key) for key in required_settings
+            ):
+                available_engines[engine] = config["env_var"]
+        elif config["env_var"] in st.secrets:
+            available_engines[engine] = config["env_var"]
+
+    # Special case for SearXNG: it's available if base_url is set
+    if "searxng" in engine_settings and engine_settings["searxng"].get("base_url"):
+        available_engines["searxng"] = SEARCH_ENGINES["searxng"]["env_var"]
+
+    return available_engines
+
+
 def load_search_options():
     conn = sqlite3.connect("settings.db")
     c = conn.cursor()
@@ -212,6 +323,11 @@ def load_search_options():
         "fallback_engine": None,
         "search_top_k": 3,
         "retrieve_top_k": 3,
+        "engine_settings": {
+            "searxng": {"base_url": "", "api_key": ""},
+            "bing": {"api_key": ""},
+            "yourdm": {"api_key": ""},
+        },
     }
 
     if result:
@@ -221,36 +337,19 @@ def load_search_options():
     return default_options
 
 
-def get_available_search_engines():
-    available_engines = SEARCH_ENGINES.copy()
-
-    # Remove engines that require API keys if the keys are not present in st.secrets
-    if "SEARXNG_BASE_URL" not in st.secrets:
-        available_engines.pop("searxng", None)
-    if "BING_SEARCH_API_KEY" not in st.secrets:
-        available_engines.pop("bing", None)
-    if "YDC_API_KEY" not in st.secrets:
-        available_engines.pop("yourdm", None)
-
-    return available_engines
-
-
-def save_search_options(primary_engine, fallback_engine, search_top_k, retrieve_top_k):
+def save_search_options(**options):
     conn = sqlite3.connect("settings.db")
     c = conn.cursor()
+
+    # Load existing options
+    existing_options = load_search_options()
+
+    # Update with new options
+    existing_options.update(options)
+
     c.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        (
-            "search_options",
-            json.dumps(
-                {
-                    "primary_engine": primary_engine,
-                    "fallback_engine": fallback_engine,
-                    "search_top_k": search_top_k,
-                    "retrieve_top_k": retrieve_top_k,
-                }
-            ),
-        ),
+        ("search_options", json.dumps(existing_options)),
     )
     conn.commit()
     conn.close()
@@ -312,13 +411,20 @@ def list_downloaded_models():
         return []
 
 
+# ---------------
+# Settings Page
+# ---------------
 def settings_page(selected_setting):
     current_theme = load_and_apply_theme()
     st.title("Settings")
 
     if selected_setting == "Search":
-        st.header("Search Options Settings")
-        search_options = load_search_options()
+        st.subheader("Search Options Settings")
+
+        if "search_options" not in st.session_state:
+            st.session_state.search_options = load_search_options()
+
+        search_options = st.session_state.search_options
 
         primary_engine = st.selectbox(
             "Primary Search Engine",
@@ -327,20 +433,20 @@ def settings_page(selected_setting):
             key="primary_engine_select",
         )
 
+        fallback_options = [None] + [
+            engine for engine in SEARCH_ENGINES.keys() if engine != primary_engine
+        ]
+        current_fallback = search_options["fallback_engine"]
+        if (
+            current_fallback == primary_engine
+            or current_fallback not in fallback_options
+        ):
+            current_fallback = None
+
         fallback_engine = st.selectbox(
             "Fallback Search Engine",
-            options=[None]
-            + [engine for engine in SEARCH_ENGINES.keys() if engine != primary_engine],
-            index=0
-            if search_options["fallback_engine"] is None
-            else (
-                [None]
-                + [
-                    engine
-                    for engine in SEARCH_ENGINES.keys()
-                    if engine != primary_engine
-                ]
-            ).index(search_options["fallback_engine"]),
+            options=fallback_options,
+            index=fallback_options.index(current_fallback),
             key="fallback_engine_select",
         )
 
@@ -351,6 +457,7 @@ def settings_page(selected_setting):
             value=search_options["search_top_k"],
             key="search_top_k_input",
         )
+
         retrieve_top_k = st.number_input(
             "Retrieve Top K",
             min_value=1,
@@ -359,14 +466,30 @@ def settings_page(selected_setting):
             key="retrieve_top_k_input",
         )
 
+        st.subheader("Engine-specific Settings")
+        engine_settings = search_options.get("engine_settings", {})
+
+        for engine in SEARCH_ENGINES:
+            with st.expander(f"{engine.capitalize()} Settings"):
+                engine_settings[engine] = get_engine_specific_settings(
+                    engine, engine_settings.get(engine, {})
+                )
+
         if st.button("Save Search Options", key="save_search_options_button"):
-            save_search_options(
-                primary_engine, fallback_engine, search_top_k, retrieve_top_k
-            )
+            updated_search_options = {
+                "primary_engine": primary_engine,
+                "fallback_engine": fallback_engine,
+                "search_top_k": search_top_k,
+                "retrieve_top_k": retrieve_top_k,
+                "engine_settings": engine_settings,
+            }
+            save_search_options(**updated_search_options)
+            st.session_state.search_options = updated_search_options
             st.success("Search options saved successfully!")
+            st.experimental_rerun()
 
     elif selected_setting == "LLM":
-        st.header("LLM Settings")
+        st.subheader("LLM Settings")
         llm_settings = load_llm_settings()
 
         primary_model = st.selectbox(
@@ -440,7 +563,7 @@ def settings_page(selected_setting):
             st.success("LLM settings saved successfully!")
 
     elif selected_setting == "Theme":
-        st.header("Theme Settings")
+        st.subheader("Theme Settings")
 
         # Determine if the current theme is Light or Dark
         current_theme_mode = (
@@ -503,8 +626,9 @@ def settings_page(selected_setting):
             st.rerun()
 
     elif selected_setting == "General":
-        st.header("Display Settings")
+        st.subheader("Display Settings")
         general_settings = load_general_settings()
+        phoenix_settings = load_phoenix_settings()
 
         num_columns = st.number_input(
             "Number of columns in article list",
@@ -519,6 +643,41 @@ def settings_page(selected_setting):
         if st.button("Save Display Settings", key="save_display_settings_button"):
             save_general_settings({"num_columns": num_columns})
             st.success("Display settings saved successfully!")
+
+        st.subheader("Phoenix Settings")
+        phoenix_settings = load_phoenix_settings()
+
+        phoenix_enabled = st.toggle(
+            "Enable Phoenix Tracing",
+            value=phoenix_settings.get("enabled", False),
+            help="Toggle Phoenix tracing on/off.",
+            key="phoenix_enabled_toggle",
+        )
+
+        phoenix_project_name = st.text_input(
+            "Phoenix Project Name",
+            value=phoenix_settings.get("project_name", "storm-wiki"),
+            help="Set the project name for Phoenix tracing.",
+            key="phoenix_project_name_input",
+        )
+
+        phoenix_collector_endpoint = st.text_input(
+            "Phoenix Collector Endpoint",
+            value=phoenix_settings.get("collector_endpoint", "localhost:6006"),
+            help="Set the endpoint for the Phoenix collector.",
+            key="phoenix_collector_endpoint_input",
+        )
+
+        if st.button("Save Phoenix Settings", key="save_phoenix_settings_button"):
+            save_phoenix_settings(
+                {
+                    "enabled": phoenix_enabled,
+                    "project_name": phoenix_project_name,
+                    "collector_endpoint": phoenix_collector_endpoint,
+                }
+            )
+            st.success("Phoenix settings saved successfully!")
+            st.session_state.phoenix_settings_updated = True
 
     elif selected_setting == "Categories":
         category_settings()

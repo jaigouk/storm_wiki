@@ -12,8 +12,10 @@ from pages_util.Settings import (
     load_llm_settings,
     save_llm_settings,
     list_downloaded_models,
-    SEARCH_ENGINES,
     LLM_MODELS,
+    SEARCH_ENGINES,
+    get_engine_specific_settings,
+    get_available_search_engines,
 )
 
 categories = FileIOHelper.load_categories()
@@ -96,8 +98,11 @@ def handle_form_submission(submit_button, selected_category):
 
 def display_sidebar_options():
     st.sidebar.header("Search Options")
-    search_options = load_search_options()
-    primary_engine, fallback_engine, search_top_k, retrieve_top_k = (
+    if "search_options" not in st.session_state:
+        st.session_state.search_options = load_search_options()
+
+    search_options = st.session_state.search_options
+    primary_engine, fallback_engine, search_top_k, retrieve_top_k, engine_settings = (
         display_search_options(search_options)
     )
 
@@ -112,9 +117,15 @@ def display_sidebar_options():
         or search_top_k != search_options["search_top_k"]
         or retrieve_top_k != search_options["retrieve_top_k"]
     ):
-        save_search_options(
-            primary_engine, fallback_engine, search_top_k, retrieve_top_k
-        )
+        updated_search_options = {
+            "primary_engine": primary_engine,
+            "fallback_engine": fallback_engine,
+            "search_top_k": search_top_k,
+            "retrieve_top_k": retrieve_top_k,
+            "engine_settings": engine_settings,
+        }
+        save_search_options(**updated_search_options)
+        st.session_state.search_options = updated_search_options
 
     # Save LLM settings if they have changed
     if (
@@ -130,6 +141,7 @@ def display_sidebar_options():
             "fallback_engine": fallback_engine,
             "search_top_k": search_top_k,
             "retrieve_top_k": retrieve_top_k,
+            "engine_settings": engine_settings,
         },
         "llm_options": {
             "primary_model": primary_model,
@@ -140,24 +152,31 @@ def display_sidebar_options():
 
 
 def display_search_options(search_options):
+    available_engines = get_available_search_engines()
+
     primary_engine = st.sidebar.selectbox(
         "Primary Search Engine",
-        options=list(SEARCH_ENGINES.keys()),
-        index=list(SEARCH_ENGINES.keys()).index(search_options["primary_engine"]),
+        options=list(available_engines.keys()),
+        index=list(available_engines.keys()).index(search_options["primary_engine"])
+        if search_options["primary_engine"] in available_engines
+        else 0,
         key="primary_engine",
     )
+
     fallback_options = [None] + [
-        engine for engine in SEARCH_ENGINES.keys() if engine != primary_engine
+        engine for engine in available_engines.keys() if engine != primary_engine
     ]
     current_fallback = search_options["fallback_engine"]
     if current_fallback not in fallback_options:
         current_fallback = None
+
     fallback_engine = st.sidebar.selectbox(
         "Fallback Search Engine",
         options=fallback_options,
         index=fallback_options.index(current_fallback),
         key="fallback_engine",
     )
+
     search_top_k = st.sidebar.number_input(
         "Search Top K",
         min_value=1,
@@ -165,6 +184,7 @@ def display_search_options(search_options):
         value=search_options["search_top_k"],
         key="search_top_k",
     )
+
     retrieve_top_k = st.sidebar.number_input(
         "Retrieve Top K",
         min_value=1,
@@ -172,7 +192,17 @@ def display_search_options(search_options):
         value=search_options["retrieve_top_k"],
         key="retrieve_top_k",
     )
-    return primary_engine, fallback_engine, search_top_k, retrieve_top_k
+
+    # We're not displaying engine-specific settings in the sidebar
+    engine_settings = search_options.get("engine_settings", {})
+
+    return (
+        primary_engine,
+        fallback_engine,
+        search_top_k,
+        retrieve_top_k,
+        engine_settings,
+    )
 
 
 def display_llm_options(llm_settings):

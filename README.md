@@ -5,23 +5,43 @@
 
 ## Features & Changes
 
-- Dracula soft dark color
-- Duckduckgo
-- gpt-4o-mini as a fallback option
 - dotenv for env vars
 - save result files as '*.md'
 - add date to to top of the result file
 - added STORM_TIMEZONE
-- added arize-phoenix to trace. added PHOENIX_COLLECTOR_ENDPOINT
-- added searxng and SEARXNG_BASE_URL env var as a fallback option
+- configure dark and light theme colors
+- configure arize-phoenix in settings
+- configure searxng and other search engines in settings
 
 ![storm](./assets/storm.png)
 
+<details><summary>screenshots</summary>
+
+article
+
 ![storm-article](./assets/storm-article.png)
+
+creating new article with search and llm fallback options
+
+![new-article](./assets/new-article.png)
+
+add categories
+
+![category](./assets/category.png)
+
+configure search engines
+
+![configure-search](./assets/configure-search.png)
+
+dark and light themes
+
+![theme](./assets/theme.png)
+
+</details>
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.10+
 - `knowledge-storm` package or source code
 - Required API keys (see main STORM repository)
 

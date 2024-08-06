@@ -75,6 +75,11 @@ def main():
     current_theme = load_and_apply_theme()
     st.session_state.current_theme = current_theme
 
+    # Check if Phoenix settings have been updated
+    if st.session_state.get("phoenix_settings_updated", False):
+        setup_phoenix()
+        st.session_state.phoenix_settings_updated = False
+
     # Check if a force rerun is requested
     if st.session_state.get("force_rerun", False):
         st.session_state.force_rerun = False

@@ -2,16 +2,14 @@ import os
 import logging
 import streamlit as st
 from util.file_io import FileIOHelper
-from util.ui_components import UIComponents, StreamlitCallbackHandler
-from util.theme_manager import load_and_apply_theme, get_my_articles_css
+from util.ui_components import UIComponents
+from util.theme_manager import load_and_apply_theme
 from pages_util.Settings import (
     load_categories,
     save_categories,
     load_general_settings,
     save_general_settings,
 )
-
-from util.storm_runner import run_storm_with_config
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -84,32 +82,39 @@ def display_article_list(page_size, num_columns):
             if article_data:
                 if st.session_state.selected_category == "All Categories":
                     category, article_name = article_key.split("/", 1)
-                    st.subheader(f"{category}: {article_name.replace('_', ' ')}")
                 else:
-                    st.subheader(article_key.replace("_", " "))
+                    category = st.session_state.selected_category
+                    article_name = article_key
+
+                st.markdown(
+                    f"""
+                    <h3 style="margin-bottom: 0;">
+                        {article_name.replace("_", " ")}
+                    </h3>
+                    <div style="
+                        font-size: 1em;
+                        font-weight: normal;
+                        color: var(--text-color);
+                        opacity: 0.6;">
+                    category: {category}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
                 st.write(article_data.get("short_text", "") + "...")
+
                 if st.button(
                     "Read More",
                     key=f"view_{article_key}",
-                    # Add this line to include the custom CSS class
                     use_container_width=False,
                     type="secondary",
-                    # Add the custom CSS class
                     help="Click to read the full article",
                 ):
-                    if st.session_state.selected_category == "All Categories":
-                        category, article_name = article_key.split("/", 1)
-                    else:
-                        category, article_name = (
-                            st.session_state.selected_category,
-                            article_key,
-                        )
                     st.session_state.page2_selected_my_article = (
                         category,
                         article_name,
                     )
                     st.rerun()
-
     # Pagination controls
     total_pages = max(1, (total_articles + page_size - 1) // page_size)
 
@@ -137,8 +142,6 @@ def my_articles_page():
     initialize_session_state()
     load_and_apply_theme()
     UIComponents.apply_custom_css()
-
-    st.title("My Articles")
 
     if "page2_selected_my_article" in st.session_state:
         display_selected_article()
@@ -181,8 +184,6 @@ def display_selected_article():
 
 
 def display_article_list_and_controls():
-    st.subheader("Article List")
-
     # Sidebar controls
     with st.sidebar:
         st.session_state.page_size = st.selectbox(

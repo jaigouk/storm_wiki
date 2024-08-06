@@ -25,8 +25,10 @@ class CombinedSearchAPI(dspy.Retrieve):
         self.primary_engine = self.search_options["primary_engine"]
         self.fallback_engine = self.search_options["fallback_engine"]
         self.ddg_search = DuckDuckGoSearchAPIWrapper()
-        self.searxng_base_url = st.secrets.get(
-            "SEARXNG_BASE_URL", "http://localhost:8080"
+        self.searxng_base_url = (
+            self.search_options.get("engine_settings", {})
+            .get("searxng", {})
+            .get("base_url", "http://localhost:8080")
         )
         self.search_engines = self._initialize_search_engines()
         self._initialize_domain_restrictions()
@@ -36,6 +38,7 @@ class CombinedSearchAPI(dspy.Retrieve):
             "duckduckgo": self._search_duckduckgo,
             "searxng": self._search_searxng,
             "arxiv": self._search_arxiv,
+            # Add other search engine methods here
         }
 
     def _initialize_domain_restrictions(self):

@@ -7,22 +7,48 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+import sqlite3
+import json
+
+
+def load_phoenix_settings():
+    conn = sqlite3.connect("settings.db")
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key='phoenix_settings'")
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        return json.loads(result[0])
+    return {
+        "project_name": "storm-wiki",
+        "enabled": False,
+        "collector_endpoint": "localhost:6006",
+    }
 
 
 def setup_phoenix():
     """
     Set up Phoenix for tracing and instrumentation.
     """
+    # Load Phoenix settings
+    phoenix_settings = load_phoenix_settings()
+
+    # Check if Phoenix is enabled, default to False if the key doesn't exist
+    if not phoenix_settings.get("enabled", False):
+        return None
+
     resource = Resource(
         attributes={
-            ResourceAttributes.PROJECT_NAME: "storm-wiki"})
+            ResourceAttributes.PROJECT_NAME: phoenix_settings.get(
+                "project_name", "storm-wiki"
+            )
+        }
+    )
     tracer_provider = trace_sdk.TracerProvider(resource=resource)
 
-    phoenix_collector_endpoint = os.getenv(
-        "PHOENIX_COLLECTOR_ENDPOINT", "localhost:6006"
-    )
     span_exporter = OTLPSpanExporter(
-        endpoint=f"http://{phoenix_collector_endpoint}/v1/traces"
+        endpoint=f"http://{phoenix_settings.get('collector_endpoint', 'localhost:6006')}/v1/traces"
     )
 
     span_processor = SimpleSpanProcessor(span_exporter=span_exporter)

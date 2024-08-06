@@ -45,10 +45,19 @@ class FileIOHelper:
     def load_categories() -> List[str]:
         conn = sqlite3.connect("settings.db")
         c = conn.cursor()
+
+        # Create the table if it doesn't exist
+        c.execute("""CREATE TABLE IF NOT EXISTS settings
+                 (key TEXT PRIMARY KEY, value TEXT)""")
+
         c.execute("SELECT value FROM settings WHERE key='categories'")
         result = c.fetchone()
         conn.close()
-        return json.loads(result[0]) if result else ["Default"]
+
+        if result:
+            return json.loads(result[0])
+
+        return ["Default"]
 
     @staticmethod
     def save_categories(categories: List[str]) -> None:

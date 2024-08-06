@@ -50,8 +50,8 @@ def clear_other_page_session_state(page_index: int):
 
 
 def main():
-    setup_phoenix()
     init_db()
+    setup_phoenix()
 
     if "first_run" not in st.session_state:
         st.session_state["first_run"] = True

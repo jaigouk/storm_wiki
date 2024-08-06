@@ -5,10 +5,6 @@ from util.file_io import FileIOHelper
 from util.ui_components import UIComponents, StreamlitCallbackHandler
 from util.theme_manager import load_and_apply_theme, get_my_articles_css
 from pages_util.Settings import (
-    load_search_options,
-    save_search_options,
-    load_llm_settings,
-    save_llm_settings,
     load_categories,
     save_categories,
     load_general_settings,

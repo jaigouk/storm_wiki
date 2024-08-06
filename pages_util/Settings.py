@@ -6,7 +6,6 @@ from util.theme_manager import (
     get_preview_html,
     load_and_apply_theme,
     save_theme,
-    load_theme_from_db as load_theme,
 )
 import sqlite3
 import json

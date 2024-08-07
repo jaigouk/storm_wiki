@@ -15,11 +15,14 @@ st-pages==0.4.5
 streamlit-float
 streamlit-option-menu
 
+# anthropic
+anthropic==0.32.0
+
 # duckduckgo
 langchain-community==0.2.10
 duckduckgo-search==6.2.3
 
-# stracing
+# tracing
 python-dotenv
 arize-phoenix==4.12.0
 

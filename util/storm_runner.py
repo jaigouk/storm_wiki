@@ -187,21 +187,25 @@ def create_lm_client(
                 max_tokens=model_settings["openai"]["max_tokens"],
             )
         elif model_type == "anthropic":
-            return ClaudeModel(
+            logger.info("Creating Anthropic client")
+            client = ClaudeModel(
                 model=model_settings["anthropic"]["model"],
                 api_key=os.getenv("ANTHROPIC_API_KEY"),
                 max_tokens=model_settings["anthropic"]["max_tokens"],
                 temperature=1.0,
                 top_p=0.9,
             )
+            logger.info("Anthropic client created successfully")
+            return client
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
     except Exception as e:
+        logger.error(f"Error creating {model_type} client: {str(e)}")
         if fallback and fallback_model:
-            logger.warning(
-                f"Failed to create {model_type} client. Falling back to {fallback_model}."
+            logger.warning(f"Falling back to {fallback_model}")
+            return create_lm_client(
+                fallback_model, fallback=False, model_settings=model_settings
             )
-            return create_lm_client(fallback_model, fallback=False)
         else:
             raise e
 

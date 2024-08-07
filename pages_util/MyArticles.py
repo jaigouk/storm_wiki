@@ -3,7 +3,7 @@ import logging
 import streamlit as st
 from util.file_io import FileIOHelper
 from util.ui_components import UIComponents
-from util.theme_manager import load_and_apply_theme
+from util.theme_manager import load_and_apply_theme, get_theme_css, load_and_apply_theme
 from pages_util.Settings import (
     load_categories,
     save_categories,

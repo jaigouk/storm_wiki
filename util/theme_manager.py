@@ -158,181 +158,6 @@ def get_option_menu_style(theme):
     }
 
 
-# def get_theme_css(theme):
-#     return f"""
-#     <style>
-#     :root {{
-#         --primary-color: {theme['primaryColor']};
-#         --background-color: {theme['backgroundColor']};
-#         --secondary-background-color: {theme['secondaryBackgroundColor']};
-#         --text-color: {theme['textColor']};
-#         --font: {theme['font']};
-#     }}
-
-#     /* Base styles */
-#     .stApp {{
-#         background-color: var(--background-color);
-#         color: var(--text-color);
-#         font-family: var(--font);
-#     }}
-
-#     /* Sidebar */
-#     [data-testid="stSidebar"] {{
-#         background-color: var(--secondary-background-color);
-#         color: var(--text-color);
-#     }}
-
-#     /* Text and headers */
-#     .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, p, li {{
-#         color: var(--text-color) !important;
-#     }}
-
-#     /* Buttons */
-#     .stButton > button {{
-#         font-size: 14px;
-#         padding: 2px 10px;
-#         height: auto;
-#         width: auto;
-#         background-color: var(--primary-color) !important;
-#         color: var(--background-color) !important;
-#         border-color: var(--primary-color) !important;
-#         border-radius: 4px;
-#         transition: all 0.3s ease;
-#     }}
-#     .stButton > button:hover {{
-#         background-color: {adjust_color_brightness(theme['primaryColor'], -20)} !important;
-#         color: var(--background-color) !important;
-#     }}
-#     .stButton > button > div > p {{
-#         color: inherit !important;
-#     }}
-
-#     /* Form submit button styles */
-#     .stButton > button[kind="secondaryFormSubmit"],
-#     .stButton > button[data-testid="baseButton-secondaryFormSubmit"] {{
-#         background-color: var(--primary-color) !important;
-#         color: {get_contrasting_text_color(theme['primaryColor'])} !important;
-#         border: none !important;
-#     }}
-#     .stButton > button[kind="secondaryFormSubmit"]:hover,
-#     .stButton > button[data-testid="baseButton-secondaryFormSubmit"]:hover {{
-#         opacity: 0.8;
-#     }}
-
-#     /* Sidebar button styles */
-#     [data-testid="stSidebar"] .stButton > button {{
-#         width: 100%;
-#         text-align: left;
-#         background-color: transparent !important;
-#         color: var(--text-color) !important;
-#         border: 1px solid var(--text-color) !important;
-#     }}
-#     [data-testid="stSidebar"] .stButton > button:hover {{
-#         background-color: var(--primary-color) !important;
-#         color: var(--background-color) !important;
-#         border-color: var(--primary-color) !important;
-#     }}
-
-#     /* Settings page button styles */
-#     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] .stButton > button {{
-#         width: 100%;
-#         text-align: left;
-#         background-color: transparent !important;
-#         color: var(--text-color) !important;
-#         border: none !important;
-#         border-radius: 0;
-#     }}
-#     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] .stButton > button:hover {{
-#         background-color: var(--primary-color) !important;
-#         color: var(--background-color) !important;
-#     }}
-
-#     /* Inputs */
-#     .stTextInput > div > div > input,
-#     .stNumberInput > div > div > input,
-#     .stTextArea textarea {{
-#         background-color: var(--secondary-background-color) !important;
-#         color: var(--text-color) !important;
-#         border-color: var(--primary-color) !important;
-#     }}
-#     .stTextInput > div > div > input:focus,
-#     .stNumberInput > div > div > input:focus,
-#     .stTextArea textarea:focus {{
-#         border-color: var(--primary-color) !important;
-#         box-shadow: 0 0 0 1px var(--primary-color) !important;
-#     }}
-
-#     /* Placeholder text color */
-#     .stTextInput > div > div > input::placeholder,
-#     .stNumberInput > div > div > input::placeholder,
-#     .stTextArea textarea::placeholder {{
-#         color: var(--text-color) !important;
-#         opacity: 0.6;
-#     }}
-
-#     /* Specific styling for number input */
-#     [data-testid="stNumberInput"] input {{
-#         background-color: var(--secondary-background-color) !important;
-#         color: var(--text-color) !important;
-#         border-color: var(--primary-color) !important;
-#     }}
-
-
-#     /* Ensure text color changes on hover for better contrast */
-#     .st-emotion-cache-1ppb27g:hover .st-emotion-cache-sy3zga,
-#     .st-emotion-cache-crpzz5:hover .st-emotion-cache-sy3zga,
-#     .stSelectbox [data-baseweb="select"] [role="option"]:hover .st-emotion-cache-sy3zga {{
-#         color: var(--background-color) !important;
-#     }}
-
-#     /* Number input step buttons */
-#     .stNumberInput [data-testid="stNumberInput-StepDown"],
-#     .stNumberInput [data-testid="stNumberInput-StepUp"] {{
-#         background-color: var(--secondary-background-color) !important;
-#         color: var(--text-color) !important;
-#         border-color: var(--primary-color) !important;
-#     }}
-#     .stNumberInput [data-testid="stNumberInput-StepDown"]:hover,
-#     .stNumberInput [data-testid="stNumberInput-StepUp"]:hover {{
-#         background-color: var(--primary-color) !important;
-#         color: var(--background-color) !important;
-#     }}
-
-#     /* Checkboxes and radio buttons */
-#     .stCheckbox, .stRadio {{
-#         color: var(--text-color);
-#     }}
-
-
-#     /* Dropdown list styling */
-#     div[role="listbox"] {{
-#         background-color: {theme['secondaryBackgroundColor']};
-#     }}
-
-#     div[role="listbox"] ul {{
-#         background-color: {theme['secondaryBackgroundColor']};
-#     }}
-
-#     div[role="listbox"] ul li {{
-#         background-color: {theme['secondaryBackgroundColor']};
-#         color: {theme['textColor']};
-#     }}
-
-#     div[role="listbox"] ul li:hover {{
-#         background-color: {theme['primaryColor']};
-#         color: {theme['backgroundColor']};
-#     }}
-
-#     /* Selectbox arrow color */
-#     [data-baseweb="select"] svg {{
-#         fill: {theme['textColor']};
-#     }}
-
-
-#     </style>
-#     """
-
-
 def get_theme_css(theme):
     return f"""
 <style>
@@ -342,6 +167,7 @@ def get_theme_css(theme):
     --secondary-background-color: {theme['secondaryBackgroundColor']};
     --text-color: {theme['textColor']};
     --font: {theme['font']};
+    --sidebar-bg-color: {theme['sidebarBackgroundColor']};
 }}
 
 /* Base styles */
@@ -356,43 +182,137 @@ def get_theme_css(theme):
     color: var(--text-color);
 }}
 
-/* Custom styles for select box */
-.stSelectbox [data-baseweb="select"] {{
-    background-color: var(--secondary-background-color) !important;
+/* Custom styles for the select box container */
+div[data-baseweb="select"] > div {{
+    background-color: var(--sidebar-bg-color) !important;
+    border: 1px solid {theme['textColor']} !important;
+    border-radius: 4px !important;
+}}
+
+div[data-baseweb="select"] > div:focus-within {{
+    border-color: var(--primary-color) !important;
+    box-shadow: none !important;
+}}
+
+/* Remove text background color */
+div[data-baseweb="select"] input {{
+    background-color: transparent !important;
+}}
+
+/* Styles for the select box options */
+div[data-baseweb="select"] ul {{
+    background-color: var(--sidebar-bg-color) !important;
+    border: 1px solid var(--primary-color) !important;
+}}
+
+div[data-baseweb="select"] ul li {{
+    background-color: var(--sidebar-bg-color) !important;
     color: var(--text-color) !important;
+}}
+
+div[data-baseweb="select"] ul li:hover {{
+    background-color: var(--secondary-background-color) !important;
 }}
 
 /* Custom styles for select box items */
 .st-bb {{
-    background-color: var(--secondary-background-color) !important;
+    background-color: var(--sidebar-bg-color) !important;
     color: var(--text-color) !important;
 }}
 
 .st-ba {{
-    border-bottom-color: var(--secondary-background-color) !important;
+    border-bottom-color: var(--sidebar-bg-color) !important;
 }}
 
 /* Attempt to style dropdown items */
 .stSelectbox [data-baseweb="select"] [role="option"] {{
-    background-color: var(--secondary-background-color) !important;
+    background-color: var(--sidebar-bg-color) !important;
     color: var(--text-color) !important;
 }}
 
 .stSelectbox [data-baseweb="select"] [role="option"]:hover {{
-    background-color: var(--primary-color) !important;
-    color: var(--background-color) !important;
+    background-color: var(--secondary-background-color) !important;
 }}
 
 /* Additional custom styles for dropdown items based on observed classes */
 .st-bm, .st-bn, .st-bo, .st-bp, .st-bq, .st-br, .st-bs, .st-bt, .st-bu, .st-bv, .st-bw, .st-bx, .st-by, .st-bz, .st-bt, .st-c0, .st-c1, .st-c2, .st-cd, .st-c3, .st-c4, .st-c5, .st-c6, .st-c7, .st-c8, .st-c9 {{
-    background-color: var(--secondary-background-color) !important;
+    background-color: var(--sidebar-bg-color) !important;
     color: var(--text-color) !important;
 }}
 
 .st-bm:hover, .st-bn:hover, .st-bo:hover, .st-bp:hover, .st-bq:hover, .st-br:hover, .st-bs:hover, .st-bt:hover, .st-bu:hover, .st-bv:hover, .st-bw:hover, .st-bx:hover, .st-by:hover, .st-bz:hover, .st-bt:hover, .st-c0:hover, .st-c1:hover, .st-c2:hover, .st-cd:hover, .st-c3:hover, .st-c4:hover, .st-c5:hover, .st-c6:hover, .st-c7:hover, .st-c8:hover, .st-c9:hover {{
-    background-color: var(--primary-color) !important;
-    color: var(--background-color) !important;
+    background-color: var(--secondary-background-color) !important;
 }}
+
+/* Style for number input to match select box */
+input[type="number"] {{
+    background-color: var(--sidebar-bg-color) !important;
+    color: var(--text-color) !important;
+    border: 1px solid {theme['textColor']} !important;
+    border-radius: 4px !important;
+}}
+
+input[type="number"]:focus {{
+    border-color: var(--primary-color) !important;
+    box-shadow: none !important;
+}}
+/* Style for number input container */
+    .st-emotion-cache-cpi0vb {{
+        border: 1px solid {theme['textColor']};
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+        align-items: stretch;
+    }}
+
+    .st-emotion-cache-cpi0vb:focus-within {{
+        border-color: var(--primary-color) !important;
+    }}
+
+    /* Style for the input field inside the number input */
+    .st-emotion-cache-cpi0vb input[type="number"] {{
+        border: none !important;
+        border-radius: 0 !important;
+        flex-grow: 1;
+        padding: 0.5rem;
+    }}
+
+    /* Style for number input increment and decrement buttons */
+    .st-emotion-cache-76z9jo {{
+        display: flex;
+    }}
+
+    .st-emotion-cache-1xvsebw {{
+        background-color: var(--primary-color) !important;
+        color: var(--background-color) !important;
+        border: none !important;
+        transition: opacity 0.3s ease;
+        padding: 0 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }}
+
+    .st-emotion-cache-1xvsebw:hover {{
+        opacity: 0.8;
+    }}
+
+    .st-emotion-cache-1xvsebw svg {{
+        fill: var(--background-color) !important;
+    }}
+
+    /* Remove right border radius from decrement button */
+    .st-emotion-cache-1xvsebw.step-down {{
+        border-radius: 0;
+    }}
+
+    /* Remove left border radius from increment button */
+    .st-emotion-cache-1xvsebw.step-up {{
+        border-radius: 0;
+    }}
+
+    </style>
+
 </style>
 """
 

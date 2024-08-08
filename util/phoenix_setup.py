@@ -9,8 +9,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 import sqlite3
 import json
-
-DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
+from .consts import DB_PATH
 
 
 def load_phoenix_settings():

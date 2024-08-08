@@ -7,8 +7,7 @@ import pytz
 import sqlite3
 from typing import Dict, Any, Optional, List
 from .shared_utils import parse
-
-DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
+from .consts import DB_PATH
 
 
 class FileIOHelper:

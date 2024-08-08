@@ -1,60 +1,26 @@
 import streamlit as st
-from streamlit_option_menu import option_menu
-from util.theme_manager import (
-    dark_themes,
-    light_themes,
-    get_theme_css,
-    get_preview_html,
-    load_and_apply_theme,
-    save_theme,
-)
 import sqlite3
 import json
 import subprocess
 from util.file_io import FileIOHelper
 import shutil
 import os
-
-DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
-
-SEARCH_ENGINES = {
-    "searxng": {
-        "env_var": "SEARXNG_BASE_URL",
-        "settings": {
-            "base_url": {"type": "text", "required": True, "label": "SearXNG Base URL"},
-            "api_key": {
-                "type": "password",
-                "required": False,
-                "label": "SearXNG API Key (optional)",
-            },
-        },
-    },
-    "bing": {
-        "env_var": "BING_SEARCH_API_KEY",
-        "settings": {
-            "api_key": {"type": "password", "required": True, "label": "Bing API Key"},
-        },
-    },
-    "yourdm": {
-        "env_var": "YDC_API_KEY",
-        "settings": {
-            "api_key": {
-                "type": "password",
-                "required": True,
-                "label": "YourDM API Key",
-            },
-        },
-    },
-    "duckduckgo": {"env_var": None, "settings": {}},
-    "arxiv": {"env_var": None, "settings": {}},
-}
-
-# LLM model options
-LLM_MODELS = {
-    "ollama": "OLLAMA_PORT",
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-}
+from util.ui_components import UIComponents
+from util.consts import (
+    DB_PATH,
+    SEARCH_ENGINES,
+    DARK_THEMES,
+    LIGHT_THEMES,
+    LLM_MODELS,
+)
+from util.theme_manager import (
+    load_and_apply_theme,
+    get_theme_css,
+    get_global_css,
+    get_all_custom_css,
+    get_preview_html,
+    save_theme,
+)
 
 
 def load_output_dir():
@@ -266,6 +232,13 @@ def list_downloaded_models():
 
 def settings_page(selected_setting=None):
     current_theme = load_and_apply_theme()
+    UIComponents.apply_custom_css()
+
+    # Apply all necessary CSS
+    st.markdown(get_theme_css(current_theme), unsafe_allow_html=True)
+    st.markdown(get_global_css(current_theme), unsafe_allow_html=True)
+    st.markdown(get_all_custom_css(current_theme), unsafe_allow_html=True)
+
     st.title("Settings")
 
     if selected_setting == "General":
@@ -278,8 +251,6 @@ def settings_page(selected_setting=None):
         llm_settings()
     elif selected_setting == "Categories":
         category_settings()
-
-    st.markdown(get_theme_css(current_theme), unsafe_allow_html=True)
 
 
 def general_settings():
@@ -341,7 +312,7 @@ def theme_settings():
     st.subheader("Theme Settings")
     current_theme = st.session_state.current_theme
 
-    current_theme_mode = "Light" if current_theme in light_themes.values() else "Dark"
+    current_theme_mode = "Light" if current_theme in LIGHT_THEMES.values() else "Dark"
     theme_mode = st.radio(
         "Theme Mode",
         ["Light", "Dark"],
@@ -349,7 +320,7 @@ def theme_settings():
         key="theme_mode_radio",
     )
 
-    theme_options = light_themes if theme_mode == "Light" else dark_themes
+    theme_options = LIGHT_THEMES if theme_mode == "Light" else DARK_THEMES
     current_theme_name = next(
         (k for k, v in theme_options.items() if v == current_theme), None
     )

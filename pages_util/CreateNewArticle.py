@@ -5,17 +5,23 @@ from util.ui_components import UIComponents, StreamlitCallbackHandler
 from util.file_io import FileIOHelper
 from util.text_processing import convert_txt_to_md
 from util.storm_runner import set_storm_runner, process_search_results
-from util.theme_manager import load_and_apply_theme, get_form_submit_button_css
+from util.theme_manager import (
+    load_and_apply_theme,
+    get_form_submit_button_css,
+)
 from pages_util.Settings import (
     load_search_options,
     save_search_options,
     load_llm_settings,
     save_llm_settings,
     list_downloaded_models,
-    LLM_MODELS,
-    SEARCH_ENGINES,
-    get_engine_specific_settings,
     get_available_search_engines,
+)
+from util.consts import (
+    LLM_MODELS,
+)
+from util.theme_manager import (
+    load_and_apply_theme,
 )
 
 categories = FileIOHelper.load_categories()
@@ -393,7 +399,7 @@ def cleanup_folder(current_working_dir):
 
 
 def create_new_article_page():
-    load_and_apply_theme()
+    current_theme = load_and_apply_theme()
     initialize_session_state()
     UIComponents.apply_custom_css()
 

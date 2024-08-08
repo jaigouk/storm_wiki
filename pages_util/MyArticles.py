@@ -3,7 +3,7 @@ import logging
 import streamlit as st
 from util.file_io import FileIOHelper
 from util.ui_components import UIComponents
-from util.theme_manager import load_and_apply_theme, get_theme_css, load_and_apply_theme
+from util.theme_manager import load_and_apply_theme, get_theme_css, get_global_css
 from pages_util.Settings import (
     load_categories,
     save_categories,
@@ -140,7 +140,7 @@ def display_article_list(page_size, num_columns):
 
 def my_articles_page():
     initialize_session_state()
-    load_and_apply_theme()
+    current_theme = load_and_apply_theme()
     UIComponents.apply_custom_css()
 
     if "page2_selected_my_article" in st.session_state:

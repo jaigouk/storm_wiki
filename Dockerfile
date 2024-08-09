@@ -38,7 +38,7 @@ ENV STORM_TIMEZONE="America/Los_Angeles"
 ENV PHOENIX_COLLECTOR_ENDPOINT="http://localhost:6006"
 ENV SEARXNG_BASE_URL="http://localhost:8080"
 ENV PORT=8501
-ENV DB_PATH=/data/settings.db
+ENV DB_PATH=/db/settings.db
 
 # Run the application
 CMD streamlit run storm.py --server.port $PORT --server.address 0.0.0.0

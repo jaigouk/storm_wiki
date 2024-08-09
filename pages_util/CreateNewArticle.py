@@ -9,16 +9,19 @@ from util.theme_manager import (
     load_and_apply_theme,
     get_form_submit_button_css,
 )
-from pages_util.Settings import (
+from util.consts import (
+    LLM_MODELS,
+)
+from db.db_operations import (
     load_search_options,
     save_search_options,
     load_llm_settings,
     save_llm_settings,
-    list_downloaded_models,
-    get_available_search_engines,
 )
-from util.consts import (
-    LLM_MODELS,
+from pages_util.Settings import (
+    update_llm_setting,
+    get_available_search_engines,
+    list_downloaded_models,
 )
 
 categories = FileIOHelper.load_categories()
@@ -105,23 +108,22 @@ def display_sidebar_options():
 
     def update_search_option(key):
         search_options[key] = st.session_state[f"{key}_input"]
-        save_search_options(**search_options)
+        save_search_options(search_options)
 
+    available_engines = list(get_available_search_engines().keys())
     primary_engine = st.sidebar.selectbox(
         "Primary Search Engine",
-        options=list(get_available_search_engines().keys()),
-        index=list(get_available_search_engines().keys()).index(
-            search_options["primary_engine"]
-        ),
+        options=available_engines,
+        index=available_engines.index(search_options["primary_engine"])
+        if search_options["primary_engine"] in available_engines
+        else 0,
         key="primary_engine_input",
         on_change=update_search_option,
         args=("primary_engine",),
     )
 
     fallback_options = [None] + [
-        engine
-        for engine in get_available_search_engines().keys()
-        if engine != primary_engine
+        engine for engine in available_engines if engine != primary_engine
     ]
     fallback_engine = st.sidebar.selectbox(
         "Fallback Search Engine",
@@ -138,7 +140,7 @@ def display_sidebar_options():
         "Search Top K",
         min_value=1,
         max_value=100,
-        value=search_options["search_top_k"],
+        value=int(search_options.get("search_top_k", 3)),
         key="search_top_k_input",
         on_change=update_search_option,
         args=("search_top_k",),
@@ -148,7 +150,7 @@ def display_sidebar_options():
         "Retrieve Top K",
         min_value=1,
         max_value=100,
-        value=search_options["retrieve_top_k"],
+        value=int(search_options.get("retrieve_top_k", 3)),
         key="retrieve_top_k_input",
         on_change=update_search_option,
         args=("retrieve_top_k",),
@@ -165,7 +167,7 @@ def display_sidebar_options():
             llm_settings[keys[0]][keys[1]][keys[2]] = st.session_state[f"{key}_input"]
         else:
             st.error(f"Unexpected key format: {key}")
-        save_llm_settings(**llm_settings)
+        save_llm_settings(llm_settings)
 
     primary_model = st.sidebar.selectbox(
         "Primary LLM Model",
@@ -190,14 +192,14 @@ def display_sidebar_options():
         args=("fallback_model",),
     )
 
-    model_settings = llm_settings["model_settings"]
+    model_settings = llm_settings.get("model_settings", {})
 
     for model in LLM_MODELS.keys():
         if model == primary_model or model == fallback_model:
             st.sidebar.write(f"{model.capitalize()} Settings")
             if model == "ollama":
                 downloaded_models = list_downloaded_models()
-                model_settings[model]["model"] = st.sidebar.selectbox(
+                model_settings.setdefault(model, {})["model"] = st.sidebar.selectbox(
                     "Ollama Model",
                     options=downloaded_models,
                     index=downloaded_models.index(
@@ -212,7 +214,7 @@ def display_sidebar_options():
                     args=(f"model_settings.{model}.model",),
                 )
             elif model == "openai":
-                model_settings[model]["model"] = st.sidebar.selectbox(
+                model_settings.setdefault(model, {})["model"] = st.sidebar.selectbox(
                     "OpenAI Model",
                     options=["gpt-4o-mini", "gpt-4o"],
                     index=0
@@ -223,7 +225,7 @@ def display_sidebar_options():
                     args=(f"model_settings.{model}.model",),
                 )
             elif model == "anthropic":
-                model_settings[model]["model"] = st.sidebar.selectbox(
+                model_settings.setdefault(model, {})["model"] = st.sidebar.selectbox(
                     "Anthropic Model",
                     options=["claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"],
                     index=0
@@ -234,14 +236,16 @@ def display_sidebar_options():
                     args=(f"model_settings.{model}.model",),
                 )
 
-            model_settings[model]["max_tokens"] = st.sidebar.number_input(
-                f"{model.capitalize()} Max Tokens",
-                min_value=1,
-                max_value=10000,
-                value=model_settings[model].get("max_tokens", 500),
-                key=f"model_settings.{model}.max_tokens_input",
-                on_change=update_llm_setting,
-                args=(f"model_settings.{model}.max_tokens",),
+            model_settings.setdefault(model, {})["max_tokens"] = (
+                st.sidebar.number_input(
+                    f"{model.capitalize()} Max Tokens",
+                    min_value=1,
+                    max_value=10000,
+                    value=int(model_settings[model].get("max_tokens", 500)),
+                    key=f"model_settings.{model}.max_tokens_input",
+                    on_change=update_llm_setting,
+                    args=(f"model_settings.{model}.max_tokens",),
+                )
             )
 
     return {

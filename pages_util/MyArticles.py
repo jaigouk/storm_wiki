@@ -3,28 +3,22 @@ import logging
 import streamlit as st
 from util.file_io import FileIOHelper
 from util.ui_components import UIComponents
-from util.theme_manager import load_and_apply_theme, get_theme_css, get_global_css
-from pages_util.Settings import (
-    load_categories,
-    save_categories,
-    load_general_settings,
-    save_general_settings,
-)
+from util.theme_manager import load_and_apply_theme
+from db.db_operations import load_setting, save_setting
 
 logging.basicConfig(level=logging.DEBUG)
 
 
+def update_num_columns():
+    save_setting("num_columns", st.session_state.num_columns_input)
+
+
 def ensure_default_categories():
-    categories = load_categories()
-    default_categories = ["Default", "Uncategorized"]
-
-    for category in default_categories:
-        if category not in categories:
-            categories.append(category)
-            local_dir = FileIOHelper.get_output_dir(category)
-            os.makedirs(local_dir, exist_ok=True)
-
-    save_categories(categories)
+    categories = load_setting("categories", ["Default", "Uncategorized"])
+    for category in categories:
+        local_dir = FileIOHelper.get_output_dir(category)
+        os.makedirs(local_dir, exist_ok=True)
+    save_setting("categories", categories)
     return categories
 
 
@@ -36,13 +30,10 @@ def initialize_session_state():
     if "selected_category" not in st.session_state:
         st.session_state.selected_category = "All Categories"
     if "num_columns" not in st.session_state:
-        general_settings = load_general_settings()
-        st.session_state.num_columns = general_settings.get("num_columns", 3)
+        st.session_state.num_columns = load_setting("num_columns", 3)
 
-    # Ensure default categories exist
     categories = ensure_default_categories()
 
-    # Initialize user_articles if it doesn't exist
     if "user_articles" not in st.session_state:
         st.session_state.user_articles = {}
         for category in categories:
@@ -115,6 +106,7 @@ def display_article_list(page_size, num_columns):
                         article_name,
                     )
                     st.rerun()
+
     # Pagination controls
     total_pages = max(1, (total_articles + page_size - 1) // page_size)
 
@@ -138,33 +130,6 @@ def display_article_list(page_size, num_columns):
         st.write(f"Showing all {total_articles} articles")
 
 
-def my_articles_page():
-    initialize_session_state()
-    current_theme = load_and_apply_theme()
-    UIComponents.apply_custom_css()
-
-    if "page2_selected_my_article" in st.session_state:
-        display_selected_article()
-    else:
-        # Move the category selection to the sidebar
-        with st.sidebar:
-            category_options = ["All Categories"] + list(
-                st.session_state.user_articles.keys()
-            )
-            selected_category = st.selectbox(
-                "Select Category", category_options, key="category_selector"
-            )
-
-        # Update the selected category in session state
-        if selected_category != st.session_state.selected_category:
-            st.session_state.selected_category = selected_category
-            st.session_state.current_page = (
-                1  # Reset to first page when category changes
-            )
-
-        display_article_list_and_controls()
-
-
 def display_selected_article():
     category, article_key = st.session_state.page2_selected_my_article
     selected_article_file_path_dict = st.session_state.user_articles[category][
@@ -184,7 +149,6 @@ def display_selected_article():
 
 
 def display_article_list_and_controls():
-    # Sidebar controls
     with st.sidebar:
         st.session_state.page_size = st.selectbox(
             "Items per page", [12, 24, 48, 96], index=1
@@ -198,7 +162,26 @@ def display_article_list_and_controls():
 
     display_article_list(st.session_state.page_size, st.session_state.num_columns)
 
-    # Save the number of columns setting
-    general_settings = load_general_settings()
-    general_settings["num_columns"] = st.session_state.num_columns
-    save_general_settings(general_settings)
+    save_setting("num_columns", st.session_state.num_columns)
+
+
+def my_articles_page():
+    initialize_session_state()
+    load_and_apply_theme()
+    UIComponents.apply_custom_css()
+
+    if "page2_selected_my_article" in st.session_state:
+        display_selected_article()
+    else:
+        with st.sidebar:
+            categories = load_setting("categories", ["Default"])
+            category_options = ["All Categories"] + categories
+            selected_category = st.selectbox(
+                "Select Category", category_options, key="category_selector"
+            )
+
+        if selected_category != st.session_state.selected_category:
+            st.session_state.selected_category = selected_category
+            st.session_state.current_page = 1
+
+        display_article_list_and_controls()

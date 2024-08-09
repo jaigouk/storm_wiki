@@ -1,6 +1,6 @@
 import os
 
-DB_PATH = os.environ.get("DB_PATH", "./data/settings.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db", "settings.db")
 
 SEARCH_ENGINES = {
     "searxng": {
@@ -81,7 +81,7 @@ GITHUB_LIGHT = {
     "font": "sans serif",
 }
 
-SOLARIZED_LIGHT = {
+NORD_LIGHT = {
     "primaryColor": "#268bd2",
     "backgroundColor": "#fdf6e3",
     "secondaryBackgroundColor": "#eee8d5",
@@ -91,15 +91,16 @@ SOLARIZED_LIGHT = {
     "font": "sans serif",
 }
 
-NORD_LIGHT = {
+SOLARIZED_LIGHT = {
     "primaryColor": "#5e81ac",
     "backgroundColor": "#eceff4",
     "secondaryBackgroundColor": "#e5e9f0",
     "textColor": "#2e3440",
     "sidebarBackgroundColor": "#e5e9f0",
-    "sidebarTextColor": "#4c5f66a",
+    "sidebarTextColor": "#4c566a",
     "font": "sans serif",
 }
+
 
 LIGHT_THEMES = {
     "Solarized Light": SOLARIZED_LIGHT,

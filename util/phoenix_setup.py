@@ -7,35 +7,22 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-import sqlite3
-import json
-from .consts import DB_PATH
-
-
-def load_phoenix_settings():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key='phoenix_settings'")
-    result = c.fetchone()
-    conn.close()
-
-    if result:
-        return json.loads(result[0])
-    return {
-        "project_name": "storm-wiki",
-        "enabled": False,
-        "collector_endpoint": "localhost:6006",
-    }
+from db.db_operations import load_setting
 
 
 def setup_phoenix():
     """
     Set up Phoenix for tracing and instrumentation.
     """
-    # Load Phoenix settings
-    phoenix_settings = load_phoenix_settings()
+    phoenix_settings = load_setting(
+        "phoenix_settings",
+        {
+            "project_name": "storm-wiki",
+            "enabled": False,
+            "collector_endpoint": "localhost:6006",
+        },
+    )
 
-    # Check if Phoenix is enabled, default to False if the key doesn't exist
     if not phoenix_settings.get("enabled", False):
         return None
 
@@ -58,5 +45,4 @@ def setup_phoenix():
 
     OpenAIInstrumentor().instrument()
 
-    # Return the tracer provider in case it's needed elsewhere
     return tracer_provider

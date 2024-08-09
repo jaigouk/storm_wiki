@@ -7,6 +7,7 @@ services:
       - ./data:/data
       - ${STREAMLIT_OUTPUT_DIR:-./DEMO_WORKING_DIR}:/app/DEMO_WORKING_DIR
       - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml
+      - ./db:/db
     environment:
       - STREAMLIT_OUTPUT_DIR=/app/DEMO_WORKING_DIR
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -14,4 +15,4 @@ services:
       - PHOENIX_COLLECTOR_ENDPOINT=${PHOENIX_COLLECTOR_ENDPOINT:-http://localhost:6006}
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8080}
       - PORT=${PORT:-8501}
-      - DB_PATH=/data/settings.db
+      - DB_PATH=/db/settings.db

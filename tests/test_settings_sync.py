@@ -37,6 +37,52 @@ def print_available_elements(at):
 
 
 @patch("streamlit.secrets", {"some_key": "some_value"})
+def test_num_columns_sync():
+    setup_test_environment()
+
+    # Test Settings page to My Articles page sync
+    settings_at = AppTest.from_file("pages_util/Settings.py")
+    settings_at.run()
+
+    print_available_elements(settings_at)
+
+    try:
+        settings_at.selectbox[0].set_value("General").run()
+        settings_at.number_input[0].set_value(4).run()
+    except Exception as e:
+        print(f"Error setting values in Settings page: {e}")
+        print_available_elements(settings_at)
+
+    # Verify changes in My Articles page
+    my_articles_at = AppTest.from_file("pages_util/MyArticles.py")
+    my_articles_at.run()
+
+    print_available_elements(my_articles_at)
+
+    try:
+        assert my_articles_at.sidebar.number_input[0].value == 4
+    except Exception as e:
+        print(f"Error verifying values in My Articles page: {e}")
+        print_available_elements(my_articles_at)
+
+    # Test My Articles page to Settings page sync
+    try:
+        my_articles_at.sidebar.number_input[0].set_value(5).run()
+    except Exception as e:
+        print(f"Error setting values in My Articles page: {e}")
+        print_available_elements(my_articles_at)
+
+    # Verify changes in Settings page
+    settings_at = AppTest.from_file("pages_util/Settings.py")
+    settings_at.run()
+    try:
+        assert settings_at.number_input[0].value == 5
+    except Exception as e:
+        print(f"Error verifying final values in Settings page: {e}")
+        print_available_elements(settings_at)
+
+
+@patch("streamlit.secrets", {"some_key": "some_value"})
 def test_search_options_sync():
     setup_test_environment()
 
@@ -132,4 +178,50 @@ def test_llm_settings_sync():
         assert settings_at.selectbox[2].value == "gpt-4o"
     except Exception as e:
         print(f"Error verifying final values in Settings page: {e}")
+        print_available_elements(settings_at)
+
+
+@patch("streamlit.secrets", {"some_key": "some_value"})
+def test_phoenix_settings_sync():
+    setup_test_environment()
+
+    settings_at = AppTest.from_file("pages_util/Settings.py")
+    settings_at.run()
+
+    print_available_elements(settings_at)
+
+    try:
+        settings_at.selectbox[0].set_value("General").run()
+        settings_at.toggle[0].set_value(True).run()
+        settings_at.text_input[0].set_value("test-project").run()
+        settings_at.text_input[1].set_value("localhost:7007").run()
+    except Exception as e:
+        print(f"Error setting values in Settings page: {e}")
+        print_available_elements(settings_at)
+
+    # Verify changes in Phoenix settings
+    settings_at = AppTest.from_file("pages_util/Settings.py")
+    settings_at.run()
+    try:
+        assert settings_at.toggle[0].value == True
+        assert settings_at.text_input[0].value == "test-project"
+        assert settings_at.text_input[1].value == "localhost:7007"
+    except Exception as e:
+        print(f"Error verifying Phoenix settings: {e}")
+        print_available_elements(settings_at)
+
+    # Test toggling Phoenix off
+    try:
+        settings_at.toggle[0].set_value(False).run()
+    except Exception as e:
+        print(f"Error toggling Phoenix off: {e}")
+        print_available_elements(settings_at)
+
+    # Verify Phoenix is disabled
+    settings_at = AppTest.from_file("pages_util/Settings.py")
+    settings_at.run()
+    try:
+        assert settings_at.toggle[0].value == False
+    except Exception as e:
+        print(f"Error verifying Phoenix is disabled: {e}")
         print_available_elements(settings_at)

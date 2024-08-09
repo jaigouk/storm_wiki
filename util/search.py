@@ -38,7 +38,6 @@ class CombinedSearchAPI(dspy.Retrieve):
             "duckduckgo": self._search_duckduckgo,
             "searxng": self._search_searxng,
             "arxiv": self._search_arxiv,
-            # Add other search engine methods here
         }
 
     def _initialize_domain_restrictions(self):

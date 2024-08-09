@@ -56,6 +56,10 @@ def main():
     if "first_run" not in st.session_state:
         st.session_state["first_run"] = True
 
+    # Initialize theme_updated state
+    if "theme_updated" not in st.session_state:
+        st.session_state.theme_updated = False
+
     # set api keys from secrets
     if st.session_state["first_run"]:
         for key, value in st.secrets.items():
@@ -74,6 +78,7 @@ def main():
     # Load theme from database
     current_theme = load_and_apply_theme()
     st.session_state.current_theme = current_theme
+    st.session_state.option_menu_style = get_option_menu_style(current_theme)
 
     # Check if Phoenix settings have been updated
     if st.session_state.get("phoenix_settings_updated", False):
@@ -89,14 +94,18 @@ def main():
     with st.sidebar:
         st.title("Storm wiki")
         pages = ["My Articles", "Create New Article", "Settings"]
+
+        # Use a unique key for the menu when the theme is updated
+        menu_key = f"menu_selection_{st.session_state.get('theme_updated', False)}"
+
         menu_selection = option_menu(
             menu_title=None,
             options=pages,
             icons=["house", "pencil-square", "gear"],
             menu_icon="cast",
             default_index=0,
-            styles=get_option_menu_style(current_theme),
-            key="menu_selection",
+            styles=st.session_state.option_menu_style,
+            key=menu_key,
         )
 
         # Add submenu for Settings
@@ -105,17 +114,27 @@ def main():
             st.markdown("### Settings Section")
             settings_options = ["General", "Search", "Theme", "LLM", "Categories"]
             icons = ["gear", "search", "brush", "robot", "folder-tree"]
+
+            # Use a unique key for the submenu when the theme is updated
+            submenu_key = (
+                f"settings_submenu_{st.session_state.get('theme_updated', False)}"
+            )
+
             selected_setting = option_menu(
                 menu_title=None,
                 options=settings_options,
                 icons=icons,
                 menu_icon=None,
                 default_index=0,
-                styles=get_option_menu_style(current_theme),
-                key="settings_submenu",
+                styles=st.session_state.option_menu_style,
+                key=submenu_key,
             )
             # Store the selected setting in session state
             st.session_state.selected_setting = selected_setting
+
+    # Reset the theme_updated flag
+    if st.session_state.get("theme_updated", False):
+        st.session_state.theme_updated = False
 
     # Display the selected page
     if menu_selection == "My Articles":

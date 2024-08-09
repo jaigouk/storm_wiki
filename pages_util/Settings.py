@@ -1,13 +1,11 @@
 import streamlit as st
-import sqlite3
-import json
 import subprocess
 from util.file_io import FileIOHelper
 import shutil
 import os
+import re
 from util.ui_components import UIComponents
 from util.consts import (
-    DB_PATH,
     SEARCH_ENGINES,
     DARK_THEMES,
     LIGHT_THEMES,
@@ -20,6 +18,16 @@ from util.theme_manager import (
     get_all_custom_css,
     get_preview_html,
     save_theme,
+    get_option_menu_style,
+)
+
+from db.db_operations import (
+    load_setting,
+    save_setting,
+    load_search_options,
+    save_search_options,
+    load_llm_settings,
+    save_llm_settings,
 )
 
 
@@ -37,54 +45,6 @@ def load_categories():
 
 def save_categories(categories):
     FileIOHelper.save_categories(categories)
-
-
-def load_general_settings():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key='general_settings'")
-    result = c.fetchone()
-    conn.close()
-    if result:
-        return json.loads(result[0])
-    return {"num_columns": 3}
-
-
-def save_general_settings(settings):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        ("general_settings", json.dumps(settings)),
-    )
-    conn.commit()
-    conn.close()
-
-
-def load_phoenix_settings():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key='phoenix_settings'")
-    result = c.fetchone()
-    conn.close()
-    if result:
-        return json.loads(result[0])
-    return {
-        "project_name": "storm-wiki",
-        "enabled": False,
-        "collector_endpoint": "localhost:6006",
-    }
-
-
-def save_phoenix_settings(settings):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        ("phoenix_settings", json.dumps(settings)),
-    )
-    conn.commit()
-    conn.close()
 
 
 def get_available_search_engines():
@@ -114,58 +74,9 @@ def get_available_search_engines():
     return available_engines
 
 
-def load_search_options():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key='search_options'")
-    result = c.fetchone()
-    conn.close()
-
-    default_options = {
-        "primary_engine": "duckduckgo",
-        "fallback_engine": None,
-        "search_top_k": 3,
-        "retrieve_top_k": 3,
-        "engine_settings": {
-            "searxng": {"base_url": "", "api_key": ""},
-            "bing": {"api_key": ""},
-            "yourdm": {"api_key": ""},
-        },
-    }
-
-    if result:
-        stored_options = json.loads(result[0])
-        default_options.update(stored_options)
-
-    return default_options
-
-
-def save_search_options(**options):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    existing_options = load_search_options()
-    existing_options.update(options)
-    c.execute(
-        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        ("search_options", json.dumps(existing_options)),
-    )
-    conn.commit()
-    conn.close()
-
-
 def llm_settings():
     st.subheader("LLM Settings")
     llm_settings = load_llm_settings()
-
-    def update_llm_setting(key):
-        keys = key.split(".")
-        if len(keys) == 1:
-            llm_settings[key] = st.session_state[f"{key}_input"]
-        elif len(keys) == 3:
-            llm_settings[keys[0]][keys[1]][keys[2]] = st.session_state[f"{key}_input"]
-        else:
-            st.error(f"Unexpected key format: {key}")
-        save_llm_settings(**llm_settings)
 
     primary_model = st.selectbox(
         "Primary LLM Model",
@@ -173,7 +84,7 @@ def llm_settings():
         index=list(LLM_MODELS.keys()).index(llm_settings["primary_model"]),
         key="primary_model_input",
         on_change=update_llm_setting,
-        args=("primary_model",),
+        args=("primary_model", llm_settings),
     )
 
     fallback_model_options = [None] + [
@@ -187,15 +98,15 @@ def llm_settings():
         else 0,
         key="fallback_model_input",
         on_change=update_llm_setting,
-        args=("fallback_model",),
+        args=("fallback_model", llm_settings),
     )
 
-    model_settings = llm_settings["model_settings"]
+    model_settings = llm_settings.get("model_settings", {})
 
     st.subheader("Model-specific Settings")
     for model, env_var in LLM_MODELS.items():
         st.write(f"{model.capitalize()} Settings")
-        model_settings[model] = model_settings.get(model, {})
+        model_settings.setdefault(model, {})
 
         if model == "ollama":
             downloaded_models = list_downloaded_models()
@@ -211,7 +122,7 @@ def llm_settings():
                 else 0,
                 key=f"model_settings.{model}.model_input",
                 on_change=update_llm_setting,
-                args=(f"model_settings.{model}.model",),
+                args=(f"model_settings.{model}.model", llm_settings),
             )
         elif model == "openai":
             model_settings[model]["model"] = st.selectbox(
@@ -220,7 +131,7 @@ def llm_settings():
                 index=0 if model_settings[model].get("model") == "gpt-4o-mini" else 1,
                 key=f"model_settings.{model}.model_input",
                 on_change=update_llm_setting,
-                args=(f"model_settings.{model}.model",),
+                args=(f"model_settings.{model}.model", llm_settings),
             )
         elif model == "anthropic":
             model_settings[model]["model"] = st.selectbox(
@@ -231,63 +142,18 @@ def llm_settings():
                 else 1,
                 key=f"model_settings.{model}.model_input",
                 on_change=update_llm_setting,
-                args=(f"model_settings.{model}.model",),
+                args=(f"model_settings.{model}.model", llm_settings),
             )
 
         model_settings[model]["max_tokens"] = st.number_input(
             f"{model.capitalize()} Max Tokens",
             min_value=1,
             max_value=10000,
-            value=model_settings[model].get("max_tokens", 500),
+            value=int(model_settings[model].get("max_tokens", 500)),
             key=f"model_settings.{model}.max_tokens_input",
             on_change=update_llm_setting,
-            args=(f"model_settings.{model}.max_tokens",),
+            args=(f"model_settings.{model}.max_tokens", llm_settings),
         )
-
-
-def save_llm_settings(**settings):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        ("llm_settings", json.dumps(settings)),
-    )
-    conn.commit()
-    conn.close()
-
-
-def load_llm_settings():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key='llm_settings'")
-    result = c.fetchone()
-    conn.close()
-
-    if result:
-        return json.loads(result[0])
-    return {
-        "primary_model": "ollama",
-        "fallback_model": None,
-        "model_settings": {
-            "ollama": {
-                "model": "jaigouk/hermes-2-theta-llama-3:latest",
-                "max_tokens": 500,
-            },
-            "openai": {"model": "gpt-4o-mini", "max_tokens": 500},
-            "anthropic": {"model": "claude-3-haiku-202403072", "max_tokens": 500},
-        },
-    }
-
-
-def save_llm_settings(**settings):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        ("llm_settings", json.dumps(settings)),
-    )
-    conn.commit()
-    conn.close()
 
 
 def list_downloaded_models():
@@ -325,14 +191,29 @@ def settings_page(selected_setting=None):
         category_settings()
 
 
+def update_theme(custom_theme):
+    save_theme(custom_theme)
+    st.session_state.current_theme = custom_theme
+
+
+def update_llm_setting(key, llm_settings):
+    keys = key.split(".")
+    if len(keys) == 1:
+        llm_settings[key] = st.session_state[f"{key}_input"]
+    elif len(keys) == 3:
+        llm_settings[keys[0]][keys[1]][keys[2]] = st.session_state[f"{key}_input"]
+    else:
+        st.error(f"Unexpected key format: {key}")
+    save_llm_settings(llm_settings)
+
+
+def is_valid_hex_color(color):
+    return bool(re.match(r"^#(?:[0-9a-fA-F]{3}){1,2}$", color))
+
+
 def theme_settings():
     st.subheader("Theme Settings")
-    current_theme = st.session_state.current_theme
-
-    def update_theme():
-        save_theme(custom_theme)
-        st.session_state.current_theme = custom_theme
-        st.rerun()
+    current_theme = st.session_state.current_theme.copy()
 
     current_theme_mode = "Light" if current_theme in LIGHT_THEMES.values() else "Dark"
     theme_mode = st.radio(
@@ -340,7 +221,6 @@ def theme_settings():
         ["Light", "Dark"],
         index=["Light", "Dark"].index(current_theme_mode),
         key="theme_mode_radio",
-        on_change=update_theme,
     )
 
     theme_options = LIGHT_THEMES if theme_mode == "Light" else DARK_THEMES
@@ -355,20 +235,21 @@ def theme_settings():
         list(theme_options.keys()),
         index=list(theme_options.keys()).index(current_theme_name),
         key="theme_select",
-        on_change=update_theme,
     )
 
-    current_theme = theme_options[selected_theme_name]
+    base_theme = theme_options[selected_theme_name]
 
     st.subheader("Color Customization")
     col1, col2 = st.columns(2)
 
+    custom_theme = {}
     with col1:
-        custom_theme = {}
-        for key, value in current_theme.items():
+        for key, value in base_theme.items():
             if key != "font":
                 custom_theme[key] = st.color_picker(
-                    f"{key}", value, key=f"color_picker_{key}", on_change=update_theme
+                    f"{key}",
+                    value,
+                    key=f"color_picker_{key}",
                 )
             else:
                 custom_theme[key] = st.selectbox(
@@ -376,21 +257,27 @@ def theme_settings():
                     ["sans serif", "serif", "monospace"],
                     index=["sans serif", "serif", "monospace"].index(value),
                     key="font_select",
-                    on_change=update_theme,
                 )
 
     with col2:
         st.markdown(get_preview_html(custom_theme), unsafe_allow_html=True)
 
+    if st.button("Apply Theme"):
+        save_theme(custom_theme)
+        st.session_state.current_theme = custom_theme
+        st.session_state.option_menu_style = get_option_menu_style(custom_theme)
+        st.session_state.theme_updated = True  # Set this flag to True
+        st.success("Theme applied successfully!")
+        st.rerun()
+
 
 def search_settings():
     st.subheader("Search Options Settings")
-
     search_options = load_search_options()
 
     def update_search_option(key):
         search_options[key] = st.session_state[f"{key}_input"]
-        save_search_options(**search_options)
+        save_setting("search_options", search_options)
 
     primary_engine = st.selectbox(
         "Primary Search Engine",
@@ -447,7 +334,7 @@ def search_settings():
             )
 
     search_options["engine_settings"] = engine_settings
-    save_search_options(**search_options)
+    save_setting("search_options", search_options)
 
 
 def get_engine_specific_settings(engine, current_settings, update_callback):
@@ -477,12 +364,13 @@ def get_engine_specific_settings(engine, current_settings, update_callback):
 
 def general_settings():
     st.subheader("Display Settings")
-    general_settings = load_general_settings()
-    phoenix_settings = load_phoenix_settings()
+    general_settings = load_setting("general_settings", {"num_columns": 3})
 
     def update_general_setting(key):
         general_settings[key] = st.session_state[f"{key}_input"]
-        save_general_settings(general_settings)
+        save_setting("general_settings", general_settings)
+        if key == "num_columns":
+            st.session_state.num_columns = general_settings[key]
 
     st.number_input(
         "Number of columns in article list",
@@ -497,15 +385,28 @@ def general_settings():
     )
 
     st.subheader("Phoenix Settings")
+    phoenix_settings = load_setting(
+        "phoenix_settings",
+        {
+            "project_name": "storm-wiki",
+            "enabled": False,
+            "collector_endpoint": "localhost:6006",
+        },
+    )
 
     def update_phoenix_setting(key):
-        phoenix_settings[key] = st.session_state[f"{key}_input"]
-        save_phoenix_settings(phoenix_settings)
+        phoenix_settings[key] = st.session_state[f"phoenix_{key}_input"]
+        save_setting("phoenix_settings", phoenix_settings)
         st.session_state.phoenix_settings_updated = True
 
+    toggle_label = (
+        "Enable Phoenix Tracing"
+        if not phoenix_settings["enabled"]
+        else "Disable Phoenix Tracing"
+    )
     st.toggle(
-        "Enable Phoenix Tracing",
-        value=phoenix_settings.get("enabled", False),
+        toggle_label,
+        value=phoenix_settings["enabled"],
         help="Toggle Phoenix tracing on/off.",
         key="phoenix_enabled_input",
         on_change=update_phoenix_setting,
@@ -514,7 +415,7 @@ def general_settings():
 
     st.text_input(
         "Phoenix Project Name",
-        value=phoenix_settings.get("project_name", "storm-wiki"),
+        value=phoenix_settings["project_name"],
         help="Set the project name for Phoenix tracing.",
         key="phoenix_project_name_input",
         on_change=update_phoenix_setting,
@@ -523,7 +424,7 @@ def general_settings():
 
     st.text_input(
         "Phoenix Collector Endpoint",
-        value=phoenix_settings.get("collector_endpoint", "localhost:6006"),
+        value=phoenix_settings["collector_endpoint"],
         help="Set the endpoint for the Phoenix collector.",
         key="phoenix_collector_endpoint_input",
         on_change=update_phoenix_setting,

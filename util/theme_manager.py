@@ -11,6 +11,7 @@ from .consts import (
     ALL_CUSTOM_CSS_TEMPLATE,
     TOKYO_NIGHT,
 )
+from db.db_operations import save_setting, load_setting
 
 
 def init_db():
@@ -23,30 +24,11 @@ def init_db():
 
 
 def save_theme(theme):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        ("theme", json.dumps(theme)),
-    )
-    conn.commit()
-    conn.close()
+    save_setting("theme", theme)
 
 
 def load_theme_from_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key='theme'")
-    result = c.fetchone()
-    conn.close()
-
-    if result:
-        stored_theme = json.loads(result[0])
-        # Use the stored theme as is, without merging with default
-        return stored_theme
-
-    # If no theme is stored, use the default Dracula Soft Dark theme
-    return TOKYO_NIGHT.copy()
+    return load_setting("theme", TOKYO_NIGHT.copy())
 
 
 def adjust_color_brightness(hex_color, brightness_factor):

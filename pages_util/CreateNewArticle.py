@@ -20,9 +20,6 @@ from pages_util.Settings import (
 from util.consts import (
     LLM_MODELS,
 )
-from util.theme_manager import (
-    load_and_apply_theme,
-)
 
 categories = FileIOHelper.load_categories()
 
@@ -104,83 +101,37 @@ def handle_form_submission(submit_button, selected_category):
 
 def display_sidebar_options():
     st.sidebar.header("Search Options")
-    if "search_options" not in st.session_state:
-        st.session_state.search_options = load_search_options()
+    search_options = load_search_options()
 
-    search_options = st.session_state.search_options
-    primary_engine, fallback_engine, search_top_k, retrieve_top_k, engine_settings = (
-        display_search_options(search_options)
-    )
-
-    st.sidebar.header("LLM Options")
-    llm_settings = load_llm_settings()
-    primary_model, fallback_model, model_settings = display_llm_options(llm_settings)
-
-    # Save search options if they have changed
-    if (
-        primary_engine != search_options["primary_engine"]
-        or fallback_engine != search_options["fallback_engine"]
-        or search_top_k != search_options["search_top_k"]
-        or retrieve_top_k != search_options["retrieve_top_k"]
-    ):
-        updated_search_options = {
-            "primary_engine": primary_engine,
-            "fallback_engine": fallback_engine,
-            "search_top_k": search_top_k,
-            "retrieve_top_k": retrieve_top_k,
-            "engine_settings": engine_settings,
-        }
-        save_search_options(**updated_search_options)
-        st.session_state.search_options = updated_search_options
-
-    # Save LLM settings if they have changed
-    if (
-        primary_model != llm_settings["primary_model"]
-        or fallback_model != llm_settings["fallback_model"]
-        or model_settings != llm_settings["model_settings"]
-    ):
-        save_llm_settings(primary_model, fallback_model, model_settings)
-
-    return {
-        "search_options": {
-            "primary_engine": primary_engine,
-            "fallback_engine": fallback_engine,
-            "search_top_k": search_top_k,
-            "retrieve_top_k": retrieve_top_k,
-            "engine_settings": engine_settings,
-        },
-        "llm_options": {
-            "primary_model": primary_model,
-            "fallback_model": fallback_model,
-            "model_settings": model_settings,
-        },
-    }
-
-
-def display_search_options(search_options):
-    available_engines = get_available_search_engines()
+    def update_search_option(key):
+        search_options[key] = st.session_state[f"{key}_input"]
+        save_search_options(**search_options)
 
     primary_engine = st.sidebar.selectbox(
         "Primary Search Engine",
-        options=list(available_engines.keys()),
-        index=list(available_engines.keys()).index(search_options["primary_engine"])
-        if search_options["primary_engine"] in available_engines
-        else 0,
-        key="primary_engine",
+        options=list(get_available_search_engines().keys()),
+        index=list(get_available_search_engines().keys()).index(
+            search_options["primary_engine"]
+        ),
+        key="primary_engine_input",
+        on_change=update_search_option,
+        args=("primary_engine",),
     )
 
     fallback_options = [None] + [
-        engine for engine in available_engines.keys() if engine != primary_engine
+        engine
+        for engine in get_available_search_engines().keys()
+        if engine != primary_engine
     ]
-    current_fallback = search_options["fallback_engine"]
-    if current_fallback not in fallback_options:
-        current_fallback = None
-
     fallback_engine = st.sidebar.selectbox(
         "Fallback Search Engine",
         options=fallback_options,
-        index=fallback_options.index(current_fallback),
-        key="fallback_engine",
+        index=fallback_options.index(search_options["fallback_engine"])
+        if search_options["fallback_engine"] in fallback_options
+        else 0,
+        key="fallback_engine_input",
+        on_change=update_search_option,
+        args=("fallback_engine",),
     )
 
     search_top_k = st.sidebar.number_input(
@@ -188,7 +139,9 @@ def display_search_options(search_options):
         min_value=1,
         max_value=100,
         value=search_options["search_top_k"],
-        key="search_top_k",
+        key="search_top_k_input",
+        on_change=update_search_option,
+        args=("search_top_k",),
     )
 
     retrieve_top_k = st.sidebar.number_input(
@@ -196,19 +149,105 @@ def display_search_options(search_options):
         min_value=1,
         max_value=100,
         value=search_options["retrieve_top_k"],
-        key="retrieve_top_k",
+        key="retrieve_top_k_input",
+        on_change=update_search_option,
+        args=("retrieve_top_k",),
     )
 
-    # We're not displaying engine-specific settings in the sidebar
-    engine_settings = search_options.get("engine_settings", {})
+    st.sidebar.header("LLM Options")
+    llm_settings = load_llm_settings()
 
-    return (
-        primary_engine,
-        fallback_engine,
-        search_top_k,
-        retrieve_top_k,
-        engine_settings,
+    def update_llm_setting(key):
+        keys = key.split(".")
+        if len(keys) == 1:
+            llm_settings[key] = st.session_state[f"{key}_input"]
+        elif len(keys) == 3:
+            llm_settings[keys[0]][keys[1]][keys[2]] = st.session_state[f"{key}_input"]
+        else:
+            st.error(f"Unexpected key format: {key}")
+        save_llm_settings(**llm_settings)
+
+    primary_model = st.sidebar.selectbox(
+        "Primary LLM Model",
+        options=list(LLM_MODELS.keys()),
+        index=list(LLM_MODELS.keys()).index(llm_settings["primary_model"]),
+        key="primary_model_input",
+        on_change=update_llm_setting,
+        args=("primary_model",),
     )
+
+    fallback_model_options = [None] + [
+        model for model in LLM_MODELS.keys() if model != primary_model
+    ]
+    fallback_model = st.sidebar.selectbox(
+        "Fallback LLM Model",
+        options=fallback_model_options,
+        index=fallback_model_options.index(llm_settings["fallback_model"])
+        if llm_settings["fallback_model"] in fallback_model_options
+        else 0,
+        key="fallback_model_input",
+        on_change=update_llm_setting,
+        args=("fallback_model",),
+    )
+
+    model_settings = llm_settings["model_settings"]
+
+    for model in LLM_MODELS.keys():
+        if model == primary_model or model == fallback_model:
+            st.sidebar.write(f"{model.capitalize()} Settings")
+            if model == "ollama":
+                downloaded_models = list_downloaded_models()
+                model_settings[model]["model"] = st.sidebar.selectbox(
+                    "Ollama Model",
+                    options=downloaded_models,
+                    index=downloaded_models.index(
+                        model_settings[model].get(
+                            "model", "jaigouk/hermes-2-theta-llama-3:latest"
+                        )
+                    )
+                    if model_settings[model].get("model") in downloaded_models
+                    else 0,
+                    key=f"model_settings.{model}.model_input",
+                    on_change=update_llm_setting,
+                    args=(f"model_settings.{model}.model",),
+                )
+            elif model == "openai":
+                model_settings[model]["model"] = st.sidebar.selectbox(
+                    "OpenAI Model",
+                    options=["gpt-4o-mini", "gpt-4o"],
+                    index=0
+                    if model_settings[model].get("model") == "gpt-4o-mini"
+                    else 1,
+                    key=f"model_settings.{model}.model_input",
+                    on_change=update_llm_setting,
+                    args=(f"model_settings.{model}.model",),
+                )
+            elif model == "anthropic":
+                model_settings[model]["model"] = st.sidebar.selectbox(
+                    "Anthropic Model",
+                    options=["claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"],
+                    index=0
+                    if model_settings[model].get("model") == "claude-3-haiku-20240307"
+                    else 1,
+                    key=f"model_settings.{model}.model_input",
+                    on_change=update_llm_setting,
+                    args=(f"model_settings.{model}.model",),
+                )
+
+            model_settings[model]["max_tokens"] = st.sidebar.number_input(
+                f"{model.capitalize()} Max Tokens",
+                min_value=1,
+                max_value=10000,
+                value=model_settings[model].get("max_tokens", 500),
+                key=f"model_settings.{model}.max_tokens_input",
+                on_change=update_llm_setting,
+                args=(f"model_settings.{model}.max_tokens",),
+            )
+
+    return {
+        "search_options": search_options,
+        "llm_options": llm_settings,
+    }
 
 
 def display_llm_options(llm_settings):
@@ -399,7 +438,7 @@ def cleanup_folder(current_working_dir):
 
 
 def create_new_article_page():
-    current_theme = load_and_apply_theme()
+    load_and_apply_theme()
     initialize_session_state()
     UIComponents.apply_custom_css()
 
@@ -407,7 +446,6 @@ def create_new_article_page():
         submit_button, selected_category = display_article_form()
         handle_form_submission(submit_button, selected_category)
 
-    # Use the selected category or default to "Default"
     current_category = st.session_state.get("selected_category", "Default")
     current_working_dir = get_output_dir(current_category)
 

@@ -87,27 +87,6 @@ def save_phoenix_settings(settings):
     conn.close()
 
 
-def get_engine_specific_settings(engine, current_settings={}):
-    settings = {}
-    if engine in SEARCH_ENGINES and "settings" in SEARCH_ENGINES[engine]:
-        for key, config in SEARCH_ENGINES[engine]["settings"].items():
-            input_type = config.get("type", "text")
-            if input_type == "text":
-                settings[key] = st.text_input(
-                    config["label"],
-                    value=current_settings.get(key, ""),
-                    key=f"{engine}_{key}",
-                )
-            elif input_type == "password":
-                settings[key] = st.text_input(
-                    config["label"],
-                    value=current_settings.get(key, ""),
-                    type="password",
-                    key=f"{engine}_{key}",
-                )
-    return settings
-
-
 def get_available_search_engines():
     available_engines = {}
     search_options = load_search_options()
@@ -174,21 +153,104 @@ def save_search_options(**options):
     conn.close()
 
 
-def save_llm_settings(primary_model, fallback_model, model_settings):
+def llm_settings():
+    st.subheader("LLM Settings")
+    llm_settings = load_llm_settings()
+
+    def update_llm_setting(key):
+        keys = key.split(".")
+        if len(keys) == 1:
+            llm_settings[key] = st.session_state[f"{key}_input"]
+        elif len(keys) == 3:
+            llm_settings[keys[0]][keys[1]][keys[2]] = st.session_state[f"{key}_input"]
+        else:
+            st.error(f"Unexpected key format: {key}")
+        save_llm_settings(**llm_settings)
+
+    primary_model = st.selectbox(
+        "Primary LLM Model",
+        options=list(LLM_MODELS.keys()),
+        index=list(LLM_MODELS.keys()).index(llm_settings["primary_model"]),
+        key="primary_model_input",
+        on_change=update_llm_setting,
+        args=("primary_model",),
+    )
+
+    fallback_model_options = [None] + [
+        model for model in LLM_MODELS.keys() if model != primary_model
+    ]
+    fallback_model = st.selectbox(
+        "Fallback LLM Model",
+        options=fallback_model_options,
+        index=fallback_model_options.index(llm_settings["fallback_model"])
+        if llm_settings["fallback_model"] in fallback_model_options
+        else 0,
+        key="fallback_model_input",
+        on_change=update_llm_setting,
+        args=("fallback_model",),
+    )
+
+    model_settings = llm_settings["model_settings"]
+
+    st.subheader("Model-specific Settings")
+    for model, env_var in LLM_MODELS.items():
+        st.write(f"{model.capitalize()} Settings")
+        model_settings[model] = model_settings.get(model, {})
+
+        if model == "ollama":
+            downloaded_models = list_downloaded_models()
+            model_settings[model]["model"] = st.selectbox(
+                "Ollama Model",
+                options=downloaded_models,
+                index=downloaded_models.index(
+                    model_settings[model].get(
+                        "model", "jaigouk/hermes-2-theta-llama-3:latest"
+                    )
+                )
+                if model_settings[model].get("model") in downloaded_models
+                else 0,
+                key=f"model_settings.{model}.model_input",
+                on_change=update_llm_setting,
+                args=(f"model_settings.{model}.model",),
+            )
+        elif model == "openai":
+            model_settings[model]["model"] = st.selectbox(
+                "OpenAI Model",
+                options=["gpt-4o-mini", "gpt-4o"],
+                index=0 if model_settings[model].get("model") == "gpt-4o-mini" else 1,
+                key=f"model_settings.{model}.model_input",
+                on_change=update_llm_setting,
+                args=(f"model_settings.{model}.model",),
+            )
+        elif model == "anthropic":
+            model_settings[model]["model"] = st.selectbox(
+                "Anthropic Model",
+                options=["claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"],
+                index=0
+                if model_settings[model].get("model") == "claude-3-haiku-20240307"
+                else 1,
+                key=f"model_settings.{model}.model_input",
+                on_change=update_llm_setting,
+                args=(f"model_settings.{model}.model",),
+            )
+
+        model_settings[model]["max_tokens"] = st.number_input(
+            f"{model.capitalize()} Max Tokens",
+            min_value=1,
+            max_value=10000,
+            value=model_settings[model].get("max_tokens", 500),
+            key=f"model_settings.{model}.max_tokens_input",
+            on_change=update_llm_setting,
+            args=(f"model_settings.{model}.max_tokens",),
+        )
+
+
+def save_llm_settings(**settings):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        (
-            "llm_settings",
-            json.dumps(
-                {
-                    "primary_model": primary_model,
-                    "fallback_model": fallback_model,
-                    "model_settings": model_settings,
-                }
-            ),
-        ),
+        ("llm_settings", json.dumps(settings)),
     )
     conn.commit()
     conn.close()
@@ -217,6 +279,17 @@ def load_llm_settings():
     }
 
 
+def save_llm_settings(**settings):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+        ("llm_settings", json.dumps(settings)),
+    )
+    conn.commit()
+    conn.close()
+
+
 def list_downloaded_models():
     try:
         output = subprocess.check_output(["ollama", "list"], stderr=subprocess.STDOUT)
@@ -234,7 +307,6 @@ def settings_page(selected_setting=None):
     current_theme = load_and_apply_theme()
     UIComponents.apply_custom_css()
 
-    # Apply all necessary CSS
     st.markdown(get_theme_css(current_theme), unsafe_allow_html=True)
     st.markdown(get_global_css(current_theme), unsafe_allow_html=True)
     st.markdown(get_all_custom_css(current_theme), unsafe_allow_html=True)
@@ -253,64 +325,14 @@ def settings_page(selected_setting=None):
         category_settings()
 
 
-def general_settings():
-    st.subheader("Display Settings")
-    general_settings = load_general_settings()
-    phoenix_settings = load_phoenix_settings()
-
-    num_columns = st.number_input(
-        "Number of columns in article list",
-        min_value=1,
-        max_value=6,
-        value=general_settings.get("num_columns", 3),
-        step=1,
-        help="Set the number of columns for displaying articles in the My Articles page.",
-        key="num_columns_input",
-    )
-
-    if st.button("Save Display Settings", key="save_display_settings_button"):
-        save_general_settings({"num_columns": num_columns})
-        st.success("Display settings saved successfully!")
-
-    st.subheader("Phoenix Settings")
-    phoenix_settings = load_phoenix_settings()
-
-    phoenix_enabled = st.toggle(
-        "Enable Phoenix Tracing",
-        value=phoenix_settings.get("enabled", False),
-        help="Toggle Phoenix tracing on/off.",
-        key="phoenix_enabled_toggle",
-    )
-
-    phoenix_project_name = st.text_input(
-        "Phoenix Project Name",
-        value=phoenix_settings.get("project_name", "storm-wiki"),
-        help="Set the project name for Phoenix tracing.",
-        key="phoenix_project_name_input",
-    )
-
-    phoenix_collector_endpoint = st.text_input(
-        "Phoenix Collector Endpoint",
-        value=phoenix_settings.get("collector_endpoint", "localhost:6006"),
-        help="Set the endpoint for the Phoenix collector.",
-        key="phoenix_collector_endpoint_input",
-    )
-
-    if st.button("Save Phoenix Settings", key="save_phoenix_settings_button"):
-        save_phoenix_settings(
-            {
-                "enabled": phoenix_enabled,
-                "project_name": phoenix_project_name,
-                "collector_endpoint": phoenix_collector_endpoint,
-            }
-        )
-        st.success("Phoenix settings saved successfully!")
-        st.session_state.phoenix_settings_updated = True
-
-
 def theme_settings():
     st.subheader("Theme Settings")
     current_theme = st.session_state.current_theme
+
+    def update_theme():
+        save_theme(custom_theme)
+        st.session_state.current_theme = custom_theme
+        st.rerun()
 
     current_theme_mode = "Light" if current_theme in LIGHT_THEMES.values() else "Dark"
     theme_mode = st.radio(
@@ -318,6 +340,7 @@ def theme_settings():
         ["Light", "Dark"],
         index=["Light", "Dark"].index(current_theme_mode),
         key="theme_mode_radio",
+        on_change=update_theme,
     )
 
     theme_options = LIGHT_THEMES if theme_mode == "Light" else DARK_THEMES
@@ -332,6 +355,7 @@ def theme_settings():
         list(theme_options.keys()),
         index=list(theme_options.keys()).index(current_theme_name),
         key="theme_select",
+        on_change=update_theme,
     )
 
     current_theme = theme_options[selected_theme_name]
@@ -344,7 +368,7 @@ def theme_settings():
         for key, value in current_theme.items():
             if key != "font":
                 custom_theme[key] = st.color_picker(
-                    f"{key}", value, key=f"color_picker_{key}"
+                    f"{key}", value, key=f"color_picker_{key}", on_change=update_theme
                 )
             else:
                 custom_theme[key] = st.selectbox(
@@ -352,32 +376,29 @@ def theme_settings():
                     ["sans serif", "serif", "monospace"],
                     index=["sans serif", "serif", "monospace"].index(value),
                     key="font_select",
+                    on_change=update_theme,
                 )
 
     with col2:
         st.markdown(get_preview_html(custom_theme), unsafe_allow_html=True)
 
-    if st.button("Apply Theme", key="apply_theme_button"):
-        save_theme(custom_theme)
-        st.session_state.current_theme = custom_theme
-        st.success("Theme applied successfully!")
-        st.session_state.force_rerun = True
-        st.rerun()
-
 
 def search_settings():
     st.subheader("Search Options Settings")
 
-    if "search_options" not in st.session_state:
-        st.session_state.search_options = load_search_options()
+    search_options = load_search_options()
 
-    search_options = st.session_state.search_options
+    def update_search_option(key):
+        search_options[key] = st.session_state[f"{key}_input"]
+        save_search_options(**search_options)
 
     primary_engine = st.selectbox(
         "Primary Search Engine",
         options=list(SEARCH_ENGINES.keys()),
         index=list(SEARCH_ENGINES.keys()).index(search_options["primary_engine"]),
-        key="primary_engine_select",
+        key="primary_engine_input",
+        on_change=update_search_option,
+        args=("primary_engine",),
     )
 
     fallback_options = [None] + [
@@ -391,7 +412,9 @@ def search_settings():
         "Fallback Search Engine",
         options=fallback_options,
         index=fallback_options.index(current_fallback),
-        key="fallback_engine_select",
+        key="fallback_engine_input",
+        on_change=update_search_option,
+        args=("fallback_engine",),
     )
 
     search_top_k = st.number_input(
@@ -400,6 +423,8 @@ def search_settings():
         max_value=100,
         value=search_options["search_top_k"],
         key="search_top_k_input",
+        on_change=update_search_option,
+        args=("search_top_k",),
     )
 
     retrieve_top_k = st.number_input(
@@ -408,6 +433,8 @@ def search_settings():
         max_value=100,
         value=search_options["retrieve_top_k"],
         key="retrieve_top_k_input",
+        on_change=update_search_option,
+        args=("retrieve_top_k",),
     )
 
     st.subheader("Engine-specific Settings")
@@ -416,93 +443,92 @@ def search_settings():
     for engine in SEARCH_ENGINES:
         with st.expander(f"{engine.capitalize()} Settings"):
             engine_settings[engine] = get_engine_specific_settings(
-                engine, engine_settings.get(engine, {})
+                engine, engine_settings.get(engine, {}), update_search_option
             )
 
-    if st.button("Save Search Options", key="save_search_options_button"):
-        updated_search_options = {
-            "primary_engine": primary_engine,
-            "fallback_engine": fallback_engine,
-            "search_top_k": search_top_k,
-            "retrieve_top_k": retrieve_top_k,
-            "engine_settings": engine_settings,
-        }
-        save_search_options(**updated_search_options)
-        st.session_state.search_options = updated_search_options
-        st.success("Search options saved successfully!")
-        st.experimental_rerun()
+    search_options["engine_settings"] = engine_settings
+    save_search_options(**search_options)
 
 
-def llm_settings():
-    st.subheader("LLM Settings")
-    llm_settings = load_llm_settings()
+def get_engine_specific_settings(engine, current_settings, update_callback):
+    settings = {}
+    if engine in SEARCH_ENGINES and "settings" in SEARCH_ENGINES[engine]:
+        for key, config in SEARCH_ENGINES[engine]["settings"].items():
+            input_type = config.get("type", "text")
+            if input_type == "text":
+                settings[key] = st.text_input(
+                    config["label"],
+                    value=current_settings.get(key, ""),
+                    key=f"{engine}_{key}_input",
+                    on_change=update_callback,
+                    args=(f"engine_settings.{engine}.{key}",),
+                )
+            elif input_type == "password":
+                settings[key] = st.text_input(
+                    config["label"],
+                    value=current_settings.get(key, ""),
+                    type="password",
+                    key=f"{engine}_{key}_input",
+                    on_change=update_callback,
+                    args=(f"engine_settings.{engine}.{key}",),
+                )
+    return settings
 
-    primary_model = st.selectbox(
-        "Primary LLM Model",
-        options=list(LLM_MODELS.keys()),
-        index=list(LLM_MODELS.keys()).index(llm_settings["primary_model"]),
-        key="primary_model_select",
+
+def general_settings():
+    st.subheader("Display Settings")
+    general_settings = load_general_settings()
+    phoenix_settings = load_phoenix_settings()
+
+    def update_general_setting(key):
+        general_settings[key] = st.session_state[f"{key}_input"]
+        save_general_settings(general_settings)
+
+    st.number_input(
+        "Number of columns in article list",
+        min_value=1,
+        max_value=6,
+        value=general_settings.get("num_columns", 3),
+        step=1,
+        help="Set the number of columns for displaying articles in the My Articles page.",
+        key="num_columns_input",
+        on_change=update_general_setting,
+        args=("num_columns",),
     )
 
-    fallback_model = st.selectbox(
-        "Fallback LLM Model",
-        options=[None]
-        + [model for model in LLM_MODELS.keys() if model != primary_model],
-        index=0
-        if llm_settings["fallback_model"] is None
-        else (
-            [None] + [model for model in LLM_MODELS.keys() if model != primary_model]
-        ).index(llm_settings["fallback_model"]),
-        key="fallback_model_select",
+    st.subheader("Phoenix Settings")
+
+    def update_phoenix_setting(key):
+        phoenix_settings[key] = st.session_state[f"{key}_input"]
+        save_phoenix_settings(phoenix_settings)
+        st.session_state.phoenix_settings_updated = True
+
+    st.toggle(
+        "Enable Phoenix Tracing",
+        value=phoenix_settings.get("enabled", False),
+        help="Toggle Phoenix tracing on/off.",
+        key="phoenix_enabled_input",
+        on_change=update_phoenix_setting,
+        args=("enabled",),
     )
 
-    model_settings = llm_settings["model_settings"]
+    st.text_input(
+        "Phoenix Project Name",
+        value=phoenix_settings.get("project_name", "storm-wiki"),
+        help="Set the project name for Phoenix tracing.",
+        key="phoenix_project_name_input",
+        on_change=update_phoenix_setting,
+        args=("project_name",),
+    )
 
-    st.subheader("Model-specific Settings")
-    for model, env_var in LLM_MODELS.items():
-        st.write(f"{model.capitalize()} Settings")
-        model_settings[model] = model_settings.get(model, {})
-
-        if model == "ollama":
-            downloaded_models = list_downloaded_models()
-            model_settings[model]["model"] = st.selectbox(
-                "Ollama Model",
-                options=downloaded_models,
-                index=downloaded_models.index(
-                    model_settings[model].get(
-                        "model", "jaigouk/hermes-2-theta-llama-3:latest"
-                    )
-                ),
-                key=f"{model}_model_select",
-            )
-        elif model == "openai":
-            model_settings[model]["model"] = st.selectbox(
-                "OpenAI Model",
-                options=["gpt-4o-mini", "gpt-4o"],
-                index=0 if model_settings[model].get("model") == "gpt-4o-mini" else 1,
-                key=f"{model}_model_select",
-            )
-        elif model == "anthropic":
-            model_settings[model]["model"] = st.selectbox(
-                "Anthropic Model",
-                options=["claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"],
-                index=0
-                if model_settings[model].get("model") == "claude-3-haiku-20240307"
-                else 1,
-                key=f"{model}_model_select",
-            )
-
-        model_settings[model]["max_tokens"] = st.number_input(
-            f"{model.capitalize()} Max Tokens",
-            min_value=1,
-            max_value=10000,
-            value=model_settings[model].get("max_tokens", 500),
-            key=f"{model}_max_tokens_input",
-        )
-
-    if st.button("Save LLM Settings", key="save_llm_settings_button"):
-        save_llm_settings(primary_model, fallback_model, model_settings)
-        st.success("LLM settings saved successfully!")
+    st.text_input(
+        "Phoenix Collector Endpoint",
+        value=phoenix_settings.get("collector_endpoint", "localhost:6006"),
+        help="Set the endpoint for the Phoenix collector.",
+        key="phoenix_collector_endpoint_input",
+        on_change=update_phoenix_setting,
+        args=("collector_endpoint",),
+    )
 
 
 def category_settings():

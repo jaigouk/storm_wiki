@@ -97,7 +97,7 @@ NORD_LIGHT = {
     "secondaryBackgroundColor": "#e5e9f0",
     "textColor": "#2e3440",
     "sidebarBackgroundColor": "#e5e9f0",
-    "sidebarTextColor": "#4c566a",
+    "sidebarTextColor": "#4c5f66a",
     "font": "sans serif",
 }
 

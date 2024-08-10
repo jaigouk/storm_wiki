@@ -8,7 +8,7 @@ import sqlite3
 import json
 import subprocess
 from dspy import Example
-
+import openai
 from knowledge_storm import (
     STORMWikiRunnerArguments,
     STORMWikiRunner,
@@ -21,6 +21,7 @@ from pages_util.Settings import (
     load_llm_settings,
     load_search_options,
 )
+from openai import NotFoundError
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -122,8 +123,14 @@ def run_storm_with_fallback(
             log_progress(
                 callback_handler, "Fallback LLM successfully generated content."
             )
-        except Exception as fallback_error:
-            logger.error(f"Fallback LLM failed: {str(fallback_error)}")
+        except openai.NotFoundError as e:
+            logger.error(f"Fallback LLM model not found: {e}")
+            raise
+        except openai.APIError as e:
+            logger.error(f"OpenAI API error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in fallback LLM: {e}")
             raise
     finally:
         runner.post_run()
@@ -150,10 +157,17 @@ def use_fallback_llm(topic, existing_info, fallback_lm):
 
     try:
         response = fallback_lm(prompt)
-        # The response is now a list of strings, so we'll take the first one
         return response[0] if response else ""
+    except openai.NotFoundError as e:
+        logger.error(f"Fallback LLM model not found: {e}")
+        raise
+    except openai.APIError as e:
+        logger.error(f"OpenAI API error: {e}")
+        raise
     except Exception as e:
-        logger.error(f"Error in fallback LLM: {str(e)}")
+        logger.error(
+            f"Error in fallback LLM: {e}"
+        )  # Changed from "Unexpected error in fallback LLM"
         raise
 
 

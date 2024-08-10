@@ -10,6 +10,7 @@ from util.storm_runner import (
     use_fallback_llm,
     write_fallback_result,
 )
+from openai import NotFoundError
 
 
 @pytest.fixture(autouse=True)
@@ -397,3 +398,41 @@ def test_use_fallback_llm_exception(mock_logger):
     mock_logger.error.assert_called_once_with(
         "Error in fallback LLM: Fallback LLM failed"
     )
+
+
+from openai import NotFoundError, APIError
+
+
+@patch("util.storm_runner.create_lm_client")
+@patch("util.storm_runner.collect_existing_information")
+def test_run_storm_with_fallback_model_not_found(
+    mock_collect_existing_information, mock_create_lm_client, mock_streamlit
+):
+    mock_runner = Mock()
+    mock_runner.run.side_effect = Exception("Primary LLM failed")
+
+    mock_collect_existing_information.return_value = {"research": "mock research"}
+
+    mock_fallback_lm = Mock()
+    error_message = "Error code: 404 - {'error': {'message': 'model \"gpt-4o-mini\" not found, try pulling it first', 'type': 'api_error', 'param': None, 'code': None}}"
+    mock_fallback_lm.side_effect = NotFoundError(
+        message=error_message,
+        response=Mock(status_code=404),
+        body={
+            "error": {"message": 'model "gpt-4o-mini" not found, try pulling it first'}
+        },
+    )
+    mock_create_lm_client.return_value = mock_fallback_lm
+
+    with pytest.raises(NotFoundError, match='model "gpt-4o-mini" not found'):
+        run_storm_with_fallback(
+            "test topic",
+            "/tmp/test_dir",
+            runner=mock_runner,
+            fallback_lm=mock_fallback_lm,
+        )
+
+    mock_runner.run.assert_called_once()
+    mock_collect_existing_information.assert_called_once_with(mock_runner)
+    mock_fallback_lm.assert_called_once()
+    mock_runner.post_run.assert_called_once()

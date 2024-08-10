@@ -1,5 +1,6 @@
 import os
 import json
+import openai
 from datetime import datetime
 import streamlit as st
 from util.ui_components import UIComponents, StreamlitCallbackHandler
@@ -536,7 +537,17 @@ def create_new_article_page():
         )
         progress_bar = st.progress(0)
         progress_text = st.empty()
-        run_storm_process(status, progress_bar, progress_text)
+        try:
+            run_storm_process(status, progress_bar, progress_text)
+        except openai.NotFoundError as e:
+            st.error(f"Model not found: {e}. Please check your model configuration.")
+            st.session_state["page3_write_article_state"] = "not started"
+        except openai.APIError as e:
+            st.error(f"OpenAI API error: {e}")
+            st.session_state["page3_write_article_state"] = "not started"
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {e}")
+            st.session_state["page3_write_article_state"] = "not started"
 
     if st.session_state["page3_write_article_state"] == "final_writing":
         if "runner" not in st.session_state or st.session_state["runner"] is None:

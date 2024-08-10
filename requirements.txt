@@ -1,6 +1,5 @@
 # storm
-knowledge_storm==0.2.3
-openai==1.36.1 # openai version for knowledge_storm 0.2.3
+knowledge_storm==0.2.4
 ollama==0.3.0
 
 # streamlit
@@ -14,6 +13,9 @@ deprecation==2.1.0
 st-pages==0.4.5
 streamlit-float
 streamlit-option-menu
+
+# openai
+openai==1.40.3
 
 # anthropic
 anthropic==0.32.0

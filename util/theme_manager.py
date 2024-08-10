@@ -14,15 +14,6 @@ from .consts import (
 from db.db_operations import save_setting, load_setting
 
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS settings
-                 (key TEXT PRIMARY KEY, value TEXT)""")
-    conn.commit()
-    conn.close()
-
-
 def save_theme(theme):
     save_setting("theme", theme)
 

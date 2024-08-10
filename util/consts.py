@@ -81,7 +81,7 @@ GITHUB_LIGHT = {
     "font": "sans serif",
 }
 
-NORD_LIGHT = {
+SOLARIZED_LIGHT = {
     "primaryColor": "#268bd2",
     "backgroundColor": "#fdf6e3",
     "secondaryBackgroundColor": "#eee8d5",
@@ -91,7 +91,7 @@ NORD_LIGHT = {
     "font": "sans serif",
 }
 
-SOLARIZED_LIGHT = {
+NORD_LIGHT = {
     "primaryColor": "#5e81ac",
     "backgroundColor": "#eceff4",
     "secondaryBackgroundColor": "#e5e9f0",

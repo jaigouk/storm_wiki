@@ -53,7 +53,7 @@ def get_available_search_engines():
     engine_settings = search_options.get("engine_settings", {})
 
     for engine, config in SEARCH_ENGINES.items():
-        if config["env_var"] is None:
+        if config["env_var"] is None or engine == "searxng":
             available_engines[engine] = None
         elif engine in config.get("settings", {}):
             required_settings = [
@@ -67,9 +67,6 @@ def get_available_search_engines():
                 available_engines[engine] = config["env_var"]
         elif config["env_var"] in st.secrets:
             available_engines[engine] = config["env_var"]
-
-    if "searxng" in engine_settings and engine_settings["searxng"].get("base_url"):
-        available_engines["searxng"] = SEARCH_ENGINES["searxng"]["env_var"]
 
     return available_engines
 

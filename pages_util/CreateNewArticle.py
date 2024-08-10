@@ -121,7 +121,6 @@ def display_sidebar_options():
         on_change=update_search_option,
         args=("primary_engine",),
     )
-
     fallback_options = [None] + [
         engine for engine in available_engines if engine != primary_engine
     ]

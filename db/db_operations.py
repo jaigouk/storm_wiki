@@ -38,20 +38,19 @@ def load_setting(key, default=None):
 
 
 def load_search_options():
-    return load_setting(
-        "search_options",
-        {
-            "primary_engine": "duckduckgo",
-            "fallback_engine": None,
-            "search_top_k": 3,
-            "retrieve_top_k": 3,
-            "engine_settings": {
-                "searxng": {"base_url": "", "api_key": ""},
-                "bing": {"api_key": ""},
-                "yourdm": {"api_key": ""},
-            },
+    default_options = {
+        "primary_engine": "duckduckgo",
+        "fallback_engine": None,
+        "search_top_k": 3,
+        "retrieve_top_k": 3,
+        "engine_settings": {
+            "searxng": {"base_url": "", "api_key": ""},
+            "bing": {"api_key": ""},
+            "yourdm": {"api_key": ""},
         },
-    )
+    }
+    loaded_options = load_setting("search_options")
+    return loaded_options if loaded_options is not None else default_options
 
 
 def save_search_options(options):
@@ -59,21 +58,20 @@ def save_search_options(options):
 
 
 def load_llm_settings():
-    return load_setting(
-        "llm_settings",
-        {
-            "primary_model": "ollama",
-            "fallback_model": None,
-            "model_settings": {
-                "ollama": {
-                    "model": "jaigouk/hermes-2-theta-llama-3:latest",
-                    "max_tokens": 500,
-                },
-                "openai": {"model": "gpt-4o-mini", "max_tokens": 500},
-                "anthropic": {"model": "claude-3-haiku-202403072", "max_tokens": 500},
+    default_settings = {
+        "primary_model": "ollama",
+        "fallback_model": None,
+        "model_settings": {
+            "ollama": {
+                "model": "jaigouk/hermes-2-theta-llama-3:latest",
+                "max_tokens": 500,
             },
+            "openai": {"model": "gpt-4o-mini", "max_tokens": 500},
+            "anthropic": {"model": "claude-3-haiku-202403072", "max_tokens": 500},
         },
-    )
+    }
+    loaded_settings = load_setting("llm_settings")
+    return loaded_settings if loaded_settings is not None else default_settings
 
 
 def save_llm_settings(settings):
